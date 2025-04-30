@@ -49,7 +49,7 @@ const AppRoutes = () => {
       />
 
       <Route
-        path="/user/*"
+        path="/dashboard"
         element={
           <ProtectedRoute allowedRoles={['user']}>
             <UserDashboard />

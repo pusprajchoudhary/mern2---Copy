@@ -82,11 +82,30 @@ const MarkAttendance = () => {
       setMessage(res.message || 'Attendance marked successfully');
       setAttendanceDone(true);
       setImage(null);
+      
+      // Store attendance status in localStorage
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem(`attendance_${today}`, JSON.stringify({
+        status: 'marked',
+        timestamp: new Date().toISOString(),
+        location: location
+      }));
     } catch (error) {
       console.error(error);
       setMessage('Error marking attendance');
     }
   };
+
+  // Check if attendance is already marked for today
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const storedAttendance = localStorage.getItem(`attendance_${today}`);
+    if (storedAttendance) {
+      const attendanceData = JSON.parse(storedAttendance);
+      setAttendanceDone(true);
+      setMessage('Attendance already marked for today');
+    }
+  }, []);
 
   return (
     <div className="max-w-md mx-auto mt-10 p-8 bg-gradient-to-br from-white to-blue-50 shadow-2xl rounded-3xl animate-fade-in">

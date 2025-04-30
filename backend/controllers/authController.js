@@ -77,8 +77,22 @@ const getMe = async (req, res) => {
   }
 };
 
+const logoutUser = async (req, res) => {
+  try {
+    // In a real application, you might want to:
+    // 1. Add the token to a blacklist
+    // 2. Clear any server-side sessions
+    // 3. Perform other cleanup tasks
+    
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
-  getMe
+  getMe,
+  logoutUser
 };

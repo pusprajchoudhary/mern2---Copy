@@ -6,7 +6,7 @@ import { getUsers } from '../../services/userService';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { format } from 'date-fns';
-import { getAttendanceByDate } from '../../services/attendanceService';
+import { getAttendanceByDate, exportAttendance } from '../../services/attendanceService';
 import { toast } from 'react-toastify';
 
 const AdminDashboard = () => {
@@ -97,6 +97,30 @@ const AdminDashboard = () => {
     navigate(`/admin/${section}`);
   };
 
+  const handleExportAttendance = async () => {
+    try {
+      setAttendanceLoading(true);
+      const blob = await exportAttendance(selectedDate);
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_${format(selectedDate, 'yyyy-MM-dd')}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Attendance data exported successfully');
+    } catch (error) {
+      console.error('Error exporting attendance:', error);
+      toast.error('Failed to export attendance data');
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'users', label: 'Users', icon: '👥' },
@@ -173,9 +197,18 @@ const AdminDashboard = () => {
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold mb-4">
-                Attendance Logs for {format(selectedDate, 'MMMM d, yyyy')}
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">
+                  Attendance Logs for {format(selectedDate, 'MMMM d, yyyy')}
+                </h2>
+                <button
+                  onClick={handleExportAttendance}
+                  disabled={attendanceLoading || attendanceLogs.length === 0}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {attendanceLoading ? 'Exporting...' : 'Export Attendance'}
+                </button>
+              </div>
               
               {attendanceLoading ? (
                 <div className="text-center py-4">Loading...</div>

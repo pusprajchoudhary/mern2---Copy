@@ -1,123 +1,217 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import styled from 'styled-components';
+
+const LoginContainer = styled.div`
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+    url('https://images.unsplash.com/photo-1464618663641-bbdd760ae84a?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat;
+  padding: 20px;
+`;
+
+const LoginBox = styled.div`
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 2rem;
+  border-radius: 15px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  height: auto;
+  max-height: 90vh;
+  overflow-y: auto;
+`;
+
+const Logo = styled.img`
+  width: 120px;
+  height: 120px;
+  margin-bottom: 1.5rem;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  object-fit: contain;
+`;
+
+const Title = styled.h1`
+  color: white;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+`;
+
+const Input = styled.input`
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 1rem;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 5px #ff0000;
+  }
+`;
+
+const Button = styled.button`
+  width: 100%;
+  padding: 12px;
+  margin: 16px 0;
+  border: none;
+  border-radius: 5px;
+  background: #ff0000;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  opacity: ${props => props.disabled ? 0.7 : 1};
+
+  &:hover {
+    background: ${props => props.disabled ? '#ff0000' : '#cc0000'};
+  }
+`;
+
+const RememberMeContainer = styled.div`
+  display: flex;
+  align-items: center;
+  margin: 1rem 0;
+  color: white;
+`;
+
+const AdminLink = styled.a`
+  color: white;
+  text-decoration: none;
+  text-align: right;
+  display: block;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const ErrorMessage = styled.div`
+  color: #ff0000;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+  text-align: center;
+  font-size: 0.9rem;
+`;
+
+const SuccessMessage = styled(ErrorMessage)`
+  color: #008000;
+`;
 
 const Login = () => {
-  const navigate = useNavigate();
-  const { login } = useAuth();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    role: 'user' // Default role
-  });
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const validateForm = () => {
+    if (!username || !password) {
+      setError('Please fill in all fields');
+      return false;
+    }
+    if (!username.includes('@')) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
+    setSuccess('');
 
+    if (!validateForm()) return;
+
+    setIsLoading(true);
     try {
-      const success = await login(formData);
-      if (success) {
-        // Navigate based on role
-        if (formData.role === 'admin') {
+      // Simulating API call - Replace with your actual login API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For demonstration - replace with actual login logic
+      if (username === 'admin@example.com' && password === 'admin123') {
+        setSuccess('Login successful! Redirecting...');
+        setTimeout(() => {
           navigate('/admin/dashboard');
-        } else {
-          navigate('/dashboard');
-        }
+        }, 1500);
       } else {
-        setError('Invalid credentials');
+        setError('Invalid credentials. Please try again.');
       }
     } catch (err) {
-      setError('An error occurred during login');
+      setError('An error occurred. Please try again later.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
-            <div>
-              <label htmlFor="role" className="sr-only">
-                Select Role
-              </label>
-              <select
-                id="role"
-                name="role"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                value={formData.role}
-                onChange={handleChange}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-          </div>
-
-          {error && (
-            <div className="text-red-500 text-sm text-center">{error}</div>
-          )}
-
-          <div>
-            <button
-              type="submit"
+    <LoginContainer>
+      <LoginBox>
+        <Logo 
+          src="https://www.logodesign.net/logo/line-art-house-roof-with-circle-4485ld.png" 
+          alt="Company Logo" 
+        />
+        <Title>Welcome Back</Title>
+        <form onSubmit={handleSubmit}>
+          {error && <ErrorMessage>{error}</ErrorMessage>}
+          {success && <SuccessMessage>{success}</SuccessMessage>}
+          <Input
+            type="email"
+            placeholder="Email Address"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={isLoading}
+            required
+          />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+            required
+          />
+          <RememberMeContainer>
+            <input
+              type="checkbox"
+              id="rememberMe"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
+            />
+            <label htmlFor="rememberMe" style={{ marginLeft: '8px' }}>
+              Remember me
+            </label>
+          </RememberMeContainer>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login'}
+          </Button>
+          <AdminLink 
+            href="https://wa.me/+919876543210" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            Forgot password? Contact Your Admin!
+          </AdminLink>
         </form>
-      </div>
-    </div>
+      </LoginBox>
+    </LoginContainer>
   );
 };
 

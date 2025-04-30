@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/auth";
+// Use environment variable for API URL or fallback to localhost
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -8,6 +9,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true // Enable sending cookies
 });
 
 // Add request interceptor to add token to all requests
@@ -32,6 +34,7 @@ api.interceptors.response.use(
       // Token is invalid or expired
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      // Redirect to login page
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -41,99 +44,62 @@ api.interceptors.response.use(
 // login
 export const login = async (credentials) => {
   try {
-    console.log('Attempting login with credentials:', credentials);
-    const response = await api.post('/login', credentials);
-    console.log('Login response:', response.data);
-    
-    if (!response.data || !response.data.token || !response.data.user) {
-      throw new Error('Invalid response from server');
+    const response = await api.post('/auth/login', credentials);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
     }
-
-    // Store token and user data
-    localStorage.setItem('token', response.data.token);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    console.log('Token stored:', localStorage.getItem('token'));
-    console.log('User stored:', localStorage.getItem('user'));
-
     return response.data;
   } catch (error) {
     console.error('Login error:', error);
-    if (error.response) {
-      // Server responded with an error
-      throw new Error(error.response.data.message || 'Login failed');
-    } else if (error.request) {
-      // Request was made but no response received
-      throw new Error('No response from server');
-    } else {
-      // Something else went wrong
-      throw new Error(error.message || 'Login failed');
-    }
+    throw error;
   }
 };
 
 // register
 export const register = async (userData) => {
   try {
-    console.log('Attempting registration with data:', userData);
-    const response = await api.post('/register', userData);
-    console.log('Registration response:', response.data);
-    
-    if (!response.data || !response.data.token || !response.data.user) {
-      throw new Error('Invalid response from server');
+    const response = await api.post('/auth/register', userData);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
     }
-
-    // Store token and user data
-    localStorage.setItem('token', response.data.token);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    console.log('Token stored:', localStorage.getItem('token'));
-    console.log('User stored:', localStorage.getItem('user'));
-
     return response.data;
   } catch (error) {
     console.error('Registration error:', error);
-    if (error.response) {
-      throw new Error(error.response.data.message || 'Registration failed');
-    } else if (error.request) {
-      throw new Error('No response from server');
-    } else {
-      throw new Error(error.message || 'Registration failed');
-    }
+    throw error;
   }
 };
 
 // logout
-export const logout = () => {
+export const logout = async () => {
   try {
-    console.log('Logging out, clearing storage');
+    // Try to call the backend logout endpoint
+    await api.post('/auth/logout');
+  } catch (error) {
+    // If the endpoint is not found (404), we'll still proceed with local logout
+    if (error.response?.status !== 404) {
+      console.error('Logout error:', error);
+      throw error;
+    }
+  } finally {
+    // Always clear local storage and remove token
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    console.log('Storage cleared');
-    return true;
-  } catch (error) {
-    console.error('Error during logout:', error);
-    return false;
   }
 };
 
 // get current user
-export const getCurrentUser = () => {
+export const getCurrentUser = async () => {
   try {
     const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    
-    console.log('Getting current user - Token:', token);
-    console.log('Getting current user - User data:', user);
-    
-    if (!token || !user) {
-      console.log('No token or user data found');
+    if (!token) {
       return null;
     }
-
-    const parsedUser = JSON.parse(user);
-    console.log('Parsed user data:', parsedUser);
-    return parsedUser;
+    const response = await api.get('/auth/me');
+    return response.data;
   } catch (error) {
-    console.error('Error getting current user:', error);
+    console.error('Get current user error:', error);
     return null;
   }
 };
