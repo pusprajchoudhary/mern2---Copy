@@ -2,14 +2,11 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
-const auth = require('../middleware/auth');
+const { protect, admin } = require('../middleware/authMiddleware');
 
 // Get all users (admin only)
-router.get('/', auth, async (req, res) => {
+router.get('/', protect, admin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
     const users = await User.find().select('-password');
     res.json(users);
   } catch (error) {
@@ -18,12 +15,8 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Create a new user (admin only)
-router.post('/', auth, async (req, res) => {
+router.post('/', protect, admin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const { name, email, password, role } = req.body;
 
     // Check if user already exists
@@ -51,6 +44,57 @@ router.post('/', auth, async (req, res) => {
     delete userWithoutPassword.password;
 
     res.status(201).json({ user: userWithoutPassword });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Toggle user blocked status (admin only)
+router.patch('/:id/toggle-status', protect, admin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent blocking admin users
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot block admin users' });
+    }
+
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isBlocked: user.isBlocked
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete user (admin only)
+router.delete('/:id', protect, admin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent deleting admin users
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot delete admin users' });
+    }
+
+    await user.deleteOne();
+
+    res.json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

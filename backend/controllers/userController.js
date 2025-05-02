@@ -77,22 +77,41 @@ const getAllUsers = async (req, res) => {
     }
   };
   
-  const toggleUserStatus = async (req, res) => {
-    try {
-      const user = await User.findById(req.params.userId);
-  
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      user.isBlocked = !user.isBlocked;
-      await user.save();
-  
-      res.status(200).json({ message: 'User status updated', user });
-    } catch (error) {
-      res.status(500).json({ message: 'Server Error' });
+// @desc    Toggle user blocked status
+// @route   PATCH /api/users/:id/toggle-status
+const toggleUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-  };
+
+    // Prevent blocking admin users
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot block admin users' });
+    }
+
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+
+    // If user is being blocked, invalidate their token
+    if (user.isBlocked) {
+      // You might want to implement token invalidation here
+      // For example, by adding the token to a blacklist
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isBlocked: user.isBlocked
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
   
 
 module.exports = {

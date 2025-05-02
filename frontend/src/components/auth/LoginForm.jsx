@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    role: 'user'
+    password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,16 +25,18 @@ const LoginForm = () => {
     try {
       const response = await loginUser(formData);
 
+      if (response?.isBlocked) {
+        setError('Your account has been blocked by the administrator. Please contact support.');
+        toast.error('Account blocked');
+        navigate('/blocked');
+        return;
+      }
+
       if (!response || !response.user) {
         throw new Error('Invalid response from server');
       }
 
-      if (response.user.role !== formData.role) {
-        setError(`You are registered as a ${response.user.role}. Please select ${response.user.role} role.`);
-        setIsLoading(false);
-        return;
-      }
-
+      // Redirect based on user role
       if (response.user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
@@ -42,22 +44,29 @@ const LoginForm = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.message || 'Login failed. Please check your credentials.');
+      if (error.response?.status === 403) {
+        setError('Your account has been blocked by the administrator. Please contact support.');
+        toast.error('Account blocked');
+        navigate('/blocked');
+      } else {
+        setError(error.message || 'Login failed. Please check your credentials.');
+        toast.error('Login failed');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-gray-900 to-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-red-700">
       <div className="max-w-md w-full mx-4">
-        <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+        <div className="bg-white rounded-lg shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105">
           <div className="px-8 py-10">
             <div className="text-center mb-8">
               <img
-                src="https://www.logodesign.net/logo/line-art-house-roof-with-circle-4485ld.png"
+                src="/logo.jpg"
                 alt="Company Logo"
-                className="mx-auto h-24 w-auto"
+                className="mx-auto h-24 w-24 rounded-full object-cover border-4 border-red-600 p-1"
               />
               <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
                 Welcome Back
@@ -119,25 +128,6 @@ const LoginForm = () => {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                  Role
-                </label>
-                <div className="mt-1">
-                  <select
-                    id="role"
-                    name="role"
-                    required
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
-                    value={formData.role}
-                    onChange={onChange}
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-              </div>
-
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <input
@@ -168,15 +158,6 @@ const LoginForm = () => {
                 </button>
               </div>
             </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <a href="/register" className="font-medium text-red-600 hover:text-red-500">
-                  Register here
-                </a>
-              </p>
-            </div>
           </div>
         </div>
       </div>

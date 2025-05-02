@@ -24,6 +24,7 @@ const UserDashboard = () => {
   const [attendanceStatus, setAttendanceStatus] = useState('');
   const [capturedImage, setCapturedImage] = useState(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [isWebcamReady, setIsWebcamReady] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -113,21 +114,54 @@ const UserDashboard = () => {
     });
   };
 
+  const handleWebcamError = (error) => {
+    console.error("Webcam error:", error);
+    setMessage("Webcam error: " + error.message);
+    setIsCameraEnabled(false);
+    setIsWebcamReady(false);
+    toast.error("Webcam error: " + error.message);
+  };
+
+  const handleWebcamLoad = () => {
+    console.log("Webcam loaded successfully");
+    setIsWebcamReady(true);
+  };
+
   const enableCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // First check if we already have a stream
+      if (webcamRef.current && webcamRef.current.video) {
+        setIsCameraEnabled(true);
+        setShowCamera(true);
+        setMessage("Camera already enabled");
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user"
+        } 
+      });
+      
       if (stream) {
         setIsCameraEnabled(true);
         setShowCamera(true);
         setMessage("Camera enabled successfully");
+        toast.success("Camera enabled successfully");
+        
+        // Cleanup function
         return () => {
           stream.getTracks().forEach(track => track.stop());
         };
       }
     } catch (err) {
+      console.error("Camera error:", err);
       setMessage("Failed to access camera: " + err.message);
       setIsCameraEnabled(false);
       setShowCamera(false);
+      toast.error("Failed to access camera: " + err.message);
     }
   };
 
@@ -155,11 +189,20 @@ const UserDashboard = () => {
   };
 
   const captureImage = () => {
-    if (webcamRef.current) {
+    if (webcamRef.current && isWebcamReady) {
       const imageSrc = webcamRef.current.getScreenshot();
-      setCapturedImage(imageSrc);
-      setShowImagePreview(true);
-      setMessage("Image captured successfully!");
+      if (imageSrc) {
+        setCapturedImage(imageSrc);
+        setShowImagePreview(true);
+        setMessage("Image captured successfully!");
+        toast.success("Image captured successfully!");
+      } else {
+        setMessage("Failed to capture image");
+        toast.error("Failed to capture image");
+      }
+    } else {
+      setMessage("Camera not ready");
+      toast.error("Camera not ready");
     }
   };
 
@@ -168,13 +211,44 @@ const UserDashboard = () => {
       setIsLoading(true);
       setMessage("");
 
+      // First ensure camera is enabled
+      if (!isCameraEnabled) {
+        await enableCamera();
+        if (!isCameraEnabled) {
+          setMessage("Please enable camera first");
+          return;
+        }
+      }
+
+      // Check if we have a captured image
       if (!capturedImage) {
         setMessage("Please capture your image first");
         return;
       }
 
-      if (!isLocationEnabled || !userLocation) {
+      if (location === "Location access denied") {
         setMessage("Please enable location access");
+        return;
+      }
+
+      // Get current location
+      let currentLocation;
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+        
+        currentLocation = {
+          coordinates: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          },
+          address: `${position.coords.latitude}, ${position.coords.longitude}`,
+          lastUpdated: new Date().toISOString()
+        };
+      } catch (error) {
+        console.error('Error getting location:', error);
+        setMessage("Failed to get location");
         return;
       }
 
@@ -190,12 +264,29 @@ const UserDashboard = () => {
       // Create FormData and append all fields
       const formData = new FormData();
       formData.append('image', file);
-      formData.append('location', userLocation);
+      formData.append('location[coordinates][latitude]', currentLocation.coordinates.latitude);
+      formData.append('location[coordinates][longitude]', currentLocation.coordinates.longitude);
+      formData.append('location[address]', currentLocation.address);
+      formData.append('location[lastUpdated]', currentLocation.lastUpdated);
       formData.append('userId', user._id);
       formData.append('email', user.email);
       formData.append('timestamp', new Date().toISOString());
       formData.append('date', formatDateForDisplay(currentTime));
       formData.append('time', formatTimeForDisplay(currentTime));
+
+      console.log('Submitting attendance with:', {
+        hasImage: formData.has('image'),
+        hasLocation: formData.has('location'),
+        location: {
+          coordinates: {
+            latitude: formData.get('location[coordinates][latitude]'),
+            longitude: formData.get('location[coordinates][longitude]')
+          },
+          address: formData.get('location[address]')
+        },
+        userId: formData.get('userId'),
+        timestamp: formData.get('timestamp')
+      });
 
       const response = await markAttendance(formData);
       
@@ -211,12 +302,12 @@ const UserDashboard = () => {
       localStorage.setItem(`attendance_${user._id}_${today}`, JSON.stringify({
         status: 'marked',
         timestamp: new Date().toISOString(),
-        location: userLocation,
+        location: currentLocation,
         userId: user._id
       }));
     } catch (error) {
       console.error('Error marking attendance:', error);
-      const errorMessage = error.response?.data?.message || "Error marking attendance";
+      const errorMessage = error.message || "Error marking attendance";
       setMessage(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -334,12 +425,25 @@ const UserDashboard = () => {
                             ref={webcamRef}
                             screenshotFormat="image/jpeg"
                             className="w-full h-48 sm:h-64 rounded-lg"
+                            onUserMedia={handleWebcamLoad}
+                            onUserMediaError={handleWebcamError}
+                            videoConstraints={{
+                              width: { ideal: 1280 },
+                              height: { ideal: 720 },
+                              facingMode: "user"
+                            }}
+                            forceScreenshotSourceSize={true}
+                            minScreenshotWidth={1280}
+                            minScreenshotHeight={720}
                           />
                           <button
                             onClick={captureImage}
-                            className="w-full mt-2 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                            disabled={!isWebcamReady}
+                            className={`w-full mt-2 py-2 rounded-lg ${
+                              !isWebcamReady ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'
+                            } text-white`}
                           >
-                            Capture Image
+                            {!isWebcamReady ? 'Initializing Camera...' : 'Capture Image'}
                           </button>
                         </>
                       ) : (
@@ -350,7 +454,10 @@ const UserDashboard = () => {
                             className="w-full h-48 sm:h-64 object-cover rounded-lg"
                           />
                           <button
-                            onClick={() => setShowImagePreview(false)}
+                            onClick={() => {
+                              setShowImagePreview(false);
+                              setCapturedImage(null);
+                            }}
                             className="w-full py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700"
                           >
                             Retake Image

@@ -1,13 +1,9 @@
 const express = require('express');
-const dotenv = require('dotenv');
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const attendanceRoutes = require('./routes/attendanceRoutes');
-const holidayRoutes = require('./routes/holidayRoutes');
 const cors = require('cors');
+const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
+const connectDB = require('./config/db');
 
 // Load environment variables
 dotenv.config();
@@ -19,43 +15,66 @@ if (!fs.existsSync(uploadsDir)) {
   console.log('Created uploads directory');
 }
 
-// Connect to MongoDB
-connectDB();
+// Import routes
+const attendanceRoutes = require('./routes/attendanceRoutes');
+const userRoutes = require('./routes/userRoutes');
+const authRoutes = require('./routes/authRoutes');
+const leaveRoutes = require('./routes/leaveRoutes');
+const policyRoutes = require('./routes/policyRoutes');
 
-// Initialize Express app
 const app = express();
 
 // CORS configuration
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/holidays', holidayRoutes);
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve static files (if needed for uploads)
-app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
+// Connect to MongoDB
+connectDB().then(() => {
+  console.log('MongoDB connected successfully');
+}).catch(err => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({ 
-    message: 'Something went wrong!',
+  res.status(500).json({
+    message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
-// Start server
+// Routes
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/policies', policyRoutes);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Promise Rejection:', err);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
 });

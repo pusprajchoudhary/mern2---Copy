@@ -4,7 +4,13 @@ import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -12,46 +18,50 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkUser = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setLoading(false);
-          return;
-        }
-
-        const currentUser = await getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        if (error.response?.status === 401) {
-          // Clear invalid token
+        const userData = await getCurrentUser();
+        if (userData && userData.isBlocked) {
+          setUser(null);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          setUser(null);
+          setError('Your account has been blocked. Please contact the administrator.');
+        } else {
+          setUser(userData);
         }
-        setError(error.message);
+      } catch (error) {
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuth();
+    checkUser();
   }, []);
 
-  const loginUser = async (formData) => {
+  const loginUser = async (credentials) => {
     try {
       setError(null);
-      const response = await login(formData);
-      setUser(response.user);
+      const data = await login(credentials);
+      
+      // Check if user is blocked
+      if (data.user.isBlocked) {
+        setError('Your account has been blocked. Please contact the administrator.');
+        return { isBlocked: true };
+      }
+      
+      setUser(data.user);
       toast.success('Login successful!');
-      return response;
+      return data;
     } catch (error) {
-      console.error('Login error:', error);
-      setError(error.response?.data?.message || 'Login failed');
-      toast.error(error.response?.data?.message || 'Login failed');
+      // Handle blocked user error
+      if (error.response?.status === 403) {
+        setError('Your account has been blocked. Please contact the administrator.');
+        return { isBlocked: true };
+      } else {
+        setError(error.response?.data?.message || 'Login failed');
+        toast.error(error.response?.data?.message || 'Login failed');
+      }
       throw error;
     }
   };
@@ -64,7 +74,6 @@ export const AuthProvider = ({ children }) => {
       toast.success('Registration successful!');
       return response;
     } catch (error) {
-      console.error('Registration error:', error);
       setError(error.response?.data?.message || 'Registration failed');
       toast.error(error.response?.data?.message || 'Registration failed');
       throw error;
@@ -76,9 +85,10 @@ export const AuthProvider = ({ children }) => {
       await logout();
       setUser(null);
       setError(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       toast.success('Logged out successfully!');
     } catch (error) {
-      console.error('Logout error:', error);
       setError(error.message);
       toast.error('Logout failed. Please try again.');
     }

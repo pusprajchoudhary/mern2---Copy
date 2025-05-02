@@ -45,13 +45,42 @@ api.interceptors.response.use(
 export const login = async (credentials) => {
   try {
     const response = await api.post('/auth/login', credentials);
+    
+    // Check if user is blocked before storing token
+    if (response.data.user.isBlocked) {
+      throw {
+        response: {
+          status: 403,
+          data: {
+            message: 'Your account has been blocked by the administrator. Please contact support.'
+          }
+        }
+      };
+    }
+    
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
   } catch (error) {
-    console.error('Login error:', error);
+    // Handle blocked user error
+    if (error.response?.status === 403) {
+      // Clear any existing auth data
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Rethrow with the server's message or a default message
+      throw {
+        response: {
+          status: 403,
+          data: {
+            message: error.response.data.message || 'Your account has been blocked. Please contact support.'
+          }
+        }
+      };
+    }
+    
     throw error;
   }
 };
@@ -66,7 +95,6 @@ export const register = async (userData) => {
     }
     return response.data;
   } catch (error) {
-    console.error('Registration error:', error);
     throw error;
   }
 };
@@ -79,7 +107,6 @@ export const logout = async () => {
   } catch (error) {
     // If the endpoint is not found (404), we'll still proceed with local logout
     if (error.response?.status !== 404) {
-      console.error('Logout error:', error);
       throw error;
     }
   } finally {
@@ -99,7 +126,6 @@ export const getCurrentUser = async () => {
     const response = await api.get('/auth/me');
     return response.data;
   } catch (error) {
-    console.error('Get current user error:', error);
     return null;
   }
 };

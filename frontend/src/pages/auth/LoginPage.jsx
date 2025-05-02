@@ -45,12 +45,13 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-red-800">
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAzNGM0LjQxOCAwIDgtMy41ODIgOC04cy0zLjU4Mi04LTgtOC04IDMuNTgyLTggOCAzLjU4MiA4IDggOHoiIHN0cm9rZT0iI0ZGRiIgc3Ryb2tlLW9wYWNpdHk9Ii4xIi8+PC9nPjwvc3ZnPg==')] opacity-10"></div>
+      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative z-10 transform transition-all duration-300 hover:scale-105">
         {/* Logo or Company Name */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-red-600 mb-2">Red Cat Hospitality</h1>
-          <p className="text-gray-500">Welcome back! Please login to your account.</p>
+          <h1 className="text-3xl font-bold text-red-800 mb-2">Red Cat Hospitality</h1>
+          <p className="text-gray-600">Welcome back! Please login to your account.</p>
         </div>
 
         {error && (
@@ -118,13 +119,6 @@ const LoginPage = () => {
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Don't have an account?{" "}
-          <Link to="/register" className="text-red-600 hover:text-red-500 font-medium">
-            Sign up
-          </Link>
-        </p>
       </div>
     </div>
   );

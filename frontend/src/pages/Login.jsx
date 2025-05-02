@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 import styled from 'styled-components';
 
 const LoginContainer = styled.div`
@@ -112,49 +114,35 @@ const SuccessMessage = styled(ErrorMessage)`
 `;
 
 const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const { loginUser, error } = useAuth();
   const navigate = useNavigate();
 
-  const validateForm = () => {
-    if (!username || !password) {
-      setError('Please fill in all fields');
-      return false;
-    }
-    if (!username.includes('@')) {
-      setError('Please enter a valid email address');
-      return false;
-    }
-    return true;
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!validateForm()) return;
-
     setIsLoading(true);
+
     try {
-      // Simulating API call - Replace with your actual login API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demonstration - replace with actual login logic
-      if (username === 'admin@example.com' && password === 'admin123') {
-        setSuccess('Login successful! Redirecting...');
-        setTimeout(() => {
-          navigate('/admin/dashboard');
-        }, 1500);
-      } else {
-        setError('Invalid credentials. Please try again.');
+      const response = await loginUser(formData);
+      if (response?.isBlocked) {
+        navigate('/blocked');
+      } else if (response) {
+        navigate('/');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again later.');
+    } catch (error) {
+      // Error is handled by AuthContext
+      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -170,37 +158,26 @@ const Login = () => {
         <Title>Welcome Back</Title>
         <form onSubmit={handleSubmit}>
           {error && <ErrorMessage>{error}</ErrorMessage>}
-          {success && <SuccessMessage>{success}</SuccessMessage>}
           <Input
             type="email"
             placeholder="Email Address"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
             disabled={isLoading}
             required
           />
           <Input
             type="password"
             placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
             disabled={isLoading}
             required
           />
-          <RememberMeContainer>
-            <input
-              type="checkbox"
-              id="rememberMe"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              disabled={isLoading}
-            />
-            <label htmlFor="rememberMe" style={{ marginLeft: '8px' }}>
-              Remember me
-            </label>
-          </RememberMeContainer>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Login'}
+            {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>
           <AdminLink 
             href="https://wa.me/+919876543210" 
