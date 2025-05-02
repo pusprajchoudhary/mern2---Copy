@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import Webcam from 'react-webcam';
 import { toast } from 'react-toastify';
 import { markAttendance } from '../../services/attendanceService';
+import NotificationButton from '../../components/NotificationButton';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -351,7 +352,7 @@ const UserDashboard = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-red-600 whitespace-nowrap text-center">Red Cat Hospitality Pvt Ltd</h1>
         </div>
 
-        {/* Right Side - Status and Logout */}
+        {/* Right Side - Status, Notification, and Logout */}
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2 bg-gray-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full">
             <div className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${isCheckedIn ? 'bg-green-500' : 'bg-red-500'}`}></div>
@@ -359,6 +360,8 @@ const UserDashboard = () => {
               {isCheckedIn ? 'Checked In' : 'Not Checked In'}
             </span>
           </div>
+          {/* Notification Bell */}
+          <NotificationButton />
           <button
             onClick={handleLogout}
             className="text-xs sm:text-sm px-3 sm:px-4 py-1 sm:py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"

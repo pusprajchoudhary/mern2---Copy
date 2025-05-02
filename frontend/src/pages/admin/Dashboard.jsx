@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { createUser, getUsers } from '../../services/userService';
 import { logoutUser } from '../../services/authService';
+import NotificationManager from '../../components/admin/NotificationManager';
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
@@ -98,6 +99,10 @@ const AdminDashboard = () => {
               {error}
             </div>
           )}
+
+          <div className="mb-8">
+            <NotificationManager />
+          </div>
 
           <div className="mb-6">
             <button

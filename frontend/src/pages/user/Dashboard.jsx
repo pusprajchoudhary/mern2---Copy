@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import Webcam from "react-webcam";
 import { markAttendance } from "../../services/attendanceService";
+import { getLatestNotification, markNotificationAsRead } from '../../services/notificationService';
+import { toast } from 'react-toastify';
+import NotificationButton from "../../components/NotificationButton";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -54,18 +57,9 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) {
       navigate("/login");
+      return;
     }
-  }, [user, navigate]);
 
-  // Update time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     const getLocation = () => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -83,7 +77,7 @@ const Dashboard = () => {
     const locationInterval = setInterval(getLocation, 30000);
 
     return () => clearInterval(locationInterval);
-  }, []);
+  }, [user, navigate]);
 
   useEffect(() => {
     if (!showCamera) {
@@ -91,9 +85,14 @@ const Dashboard = () => {
     }
   }, [showCamera]);
 
-  const handleLogout = () => {
-    logoutUser();
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      // Perform logout
+      await logoutUser();
+      navigate("/login");
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const formatTimeForDisplay = (date) => {
@@ -205,7 +204,9 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
+      {/* <NotificationBanner /> */}
+      
       {/* Header section */}
       <header className="bg-white shadow-sm px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -239,6 +240,8 @@ const Dashboard = () => {
                 {isCheckedIn ? 'Checked In' : 'Not Checked In'}
               </span>
             </div>
+            {/* Notification Bell */}
+            <NotificationButton />
             <button
               onClick={handleLogout}
               className="text-sm px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"

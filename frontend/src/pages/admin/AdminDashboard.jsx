@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { getAttendanceByDate, exportAttendance } from '../../services/attendanceService';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { sendNotification } from '../../services/notificationService';
 
 const formatDate = (date) => {
   try {
@@ -56,6 +57,12 @@ const AdminDashboard = () => {
   // Mobile menu state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Notification state
+  const [notificationMsg, setNotificationMsg] = useState('');
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationType, setNotificationType] = useState('announcement');
+  const [sending, setSending] = useState(false);
 
   // Update active section based on URL
   useEffect(() => {
@@ -209,6 +216,31 @@ const AdminDashboard = () => {
         console.error('Error deleting user:', error);
         toast.error(error.message);
       }
+    }
+  };
+
+  const handleSendNotification = async (e) => {
+    e.preventDefault();
+    if (!notificationTitle.trim() || !notificationMsg.trim() || !notificationType) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    setSending(true);
+    try {
+      await sendNotification({
+        title: notificationTitle,
+        message: notificationMsg,
+        type: notificationType
+      });
+      toast.success('Notification sent successfully!');
+      setNotificationTitle('');
+      setNotificationMsg('');
+      setNotificationType('announcement');
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      toast.error(error.response?.data?.error || 'Failed to send notification');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -546,8 +578,51 @@ const AdminDashboard = () => {
         return (
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-2xl font-bold mb-4">Policies & Announcements</h2>
-            <p>This is where the admin can create and manage company announcements and policies.</p>
-            {/* Policies component will be implemented here */}
+            <form onSubmit={handleSendNotification} className="mb-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={notificationTitle}
+                  onChange={e => setNotificationTitle(e.target.value)}
+                  placeholder="Enter notification title"
+                  className="w-full border rounded px-3 py-2"
+                  required
+                />
+              </div>
+              
+              {/* To add Type Section just uncomment the below code */}
+              
+              <div>
+                {/* <label className="block text-sm font-medium text-gray-700 mb-1">Type</label> */}
+                {/* <select */}
+                  {/* value={notificationType}
+                  onChange={e => setNotificationType(e.target.value)}
+                  // className="w-full border rounded px-3 py-2"
+                > */}
+                  {/* <option value="announcement">Announcement</option>
+                  <option value="policy">Policy</option> */}
+                {/* </select> */}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea
+                  value={notificationMsg}
+                  onChange={e => setNotificationMsg(e.target.value)}
+                  placeholder="Enter notification message"
+                  className="w-full border rounded px-3 py-2"
+                  rows={4}
+                  required
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="bg-red-600 text-white px-4 py-2 rounded" 
+                disabled={sending}
+              >
+                {sending ? 'Sending...' : 'Send Notification'}
+              </button>
+            </form>
           </div>
         );
       default:
