@@ -94,26 +94,17 @@ const markAttendance = async (req, res) => {
       location.coordinates.longitude
     );
 
-    // Check if user has already marked attendance today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const existingAttendance = await Attendance.findOne({
-      user,
-      timestamp: {
-        $gte: today,
-        $lt: tomorrow
+    // Check if user has already marked attendance in the last 9 hours
+    const latestAttendance = await Attendance.findOne({ user }).sort({ timestamp: -1 });
+    if (latestAttendance) {
+      const nineHoursAgo = new Date(Date.now() - 9 * 60 * 60 * 1000);
+      if (latestAttendance.timestamp > nineHoursAgo) {
+        console.log('User already marked attendance within the last 9 hours:', latestAttendance);
+        return res.status(400).json({ 
+          message: 'Attendance already marked within the last 9 hours',
+          attendance: latestAttendance
+        });
       }
-    });
-
-    if (existingAttendance) {
-      console.log('User already marked attendance today:', existingAttendance);
-      return res.status(400).json({ 
-        message: 'Attendance already marked for today',
-        attendance: existingAttendance
-      });
     }
 
     // Create a new Date object for the current time in UTC

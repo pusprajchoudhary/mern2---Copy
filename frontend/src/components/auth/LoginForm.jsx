@@ -48,6 +48,9 @@ const LoginForm = () => {
         setError('Your account has been blocked by the administrator. Please contact support.');
         toast.error('Account blocked');
         navigate('/blocked');
+      } else if (error.response?.status === 400) {
+        setError('Invalid email or password');
+        toast.error('Invalid email or password');
       } else {
         setError(error.message || 'Login failed. Please check your credentials.');
         toast.error('Login failed');

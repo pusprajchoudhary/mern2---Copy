@@ -64,6 +64,14 @@ const AdminDashboard = () => {
   const [notificationType, setNotificationType] = useState('announcement');
   const [sending, setSending] = useState(false);
 
+  // Theme state
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') || 'light';
+    }
+    return 'light';
+  });
+
   // Update active section based on URL
   useEffect(() => {
     const path = location.pathname.split('/').pop();
@@ -90,6 +98,15 @@ const AdminDashboard = () => {
 
     checkAuth();
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const fetchUsers = async () => {
     try {
@@ -249,8 +266,8 @@ const AdminDashboard = () => {
     { id: 'users', label: 'Users', icon: '👥' },
     { id: 'attendance', label: 'Attendance', icon: '📝' },
     { id: 'report', label: 'Report', icon: '📈' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
     { id: 'policies', label: 'Policies', icon: '📢' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
   // Add mobile menu toggle handler
@@ -625,20 +642,43 @@ const AdminDashboard = () => {
             </form>
           </div>
         );
+      case 'settings':
+        return (
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Settings</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-700 dark:text-gray-200">Dark Mode</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={theme === 'dark'}
+                    onChange={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                  <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">
+                    {theme === 'dark' ? 'On' : 'Off'}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       {/* Mobile Menu Button */}
       <button
         onClick={toggleMobileMenu}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white shadow-lg"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white dark:bg-gray-800 shadow-lg"
       >
         <svg
-          className="w-6 h-6 text-gray-600"
+          className="w-6 h-6 text-gray-600 dark:text-gray-200"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -665,10 +705,10 @@ const AdminDashboard = () => {
       <div
         className={`${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 fixed md:static inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform transition-transform duration-200 ease-in-out`}
+        } md:translate-x-0 fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-200 ease-in-out`}
       >
         <div className="p-4">
-          <h1 className="text-2xl font-bold text-gray-800">Admin Panel</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Admin Panel</h1>
         </div>
         <nav className="mt-6">
           {sidebarItems.map((item) => (
@@ -681,8 +721,8 @@ const AdminDashboard = () => {
                   setIsSidebarOpen(false);
                 }
               }}
-              className={`flex items-center w-full px-4 py-3 text-gray-700 hover:bg-gray-100 ${
-                activeSection === item.id ? 'bg-red-50 text-red-600' : ''
+              className={`flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                activeSection === item.id ? 'bg-red-50 dark:bg-gray-700 text-red-600 dark:text-red-400' : ''
               }`}
             >
               <span className="mr-3">{item.icon}</span>
@@ -695,9 +735,9 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white shadow-sm">
+        <header className="bg-white dark:bg-gray-800 shadow-sm">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-4 md:px-6 py-4">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2 md:mb-0">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 md:mb-0">
               {sidebarItems.find(item => item.id === activeSection)?.label}
             </h2>
             <div className="flex flex-col md:flex-row items-start md:items-center space-y-2 md:space-y-0 md:space-x-4">
@@ -709,7 +749,7 @@ const AdminDashboard = () => {
               </button>
               <button
                 onClick={handleLogout}
-                className="w-full md:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="w-full md:w-auto px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
                 Logout
               </button>
@@ -718,9 +758,9 @@ const AdminDashboard = () => {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-4 md:p-6">
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded relative mb-4">
               {error}
             </div>
           )}
