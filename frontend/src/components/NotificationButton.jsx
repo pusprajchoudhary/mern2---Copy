@@ -129,6 +129,9 @@ const NotificationButton = () => {
                   }`}
                   onClick={() => handleNotificationClick(notification)}
                 >
+                  {notification.title && (
+                    <div className="font-bold text-gray-900 mb-1">{notification.title}</div>
+                  )}
                   <div className="text-sm text-gray-900">{notification.message}</div>
                   <div className="mt-1 text-xs text-gray-500">
                     {new Date(notification.createdAt).toLocaleString()}

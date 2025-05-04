@@ -249,211 +249,102 @@ const getAttendanceByDate = async (req, res) => {
 
 const exportAttendance = async (req, res) => {
   try {
-    const { date } = req.query;
-    console.log('Starting attendance export for date:', date);
+    const { startDate, endDate } = req.query;
+    console.log('Starting attendance export for date range:', { startDate, endDate });
 
-    // Validate date format
-    const startOfDay = new Date(date);
-    if (isNaN(startOfDay.getTime())) {
-      console.error('Invalid date format:', date);
+    if (!startDate) {
+      return res.status(400).json({ message: 'Start date is required' });
+    }
+
+    // Parse and validate dates
+    const startOfRange = new Date(startDate);
+    const endOfRange = endDate ? new Date(endDate) : new Date(startDate);
+
+    if (isNaN(startOfRange.getTime()) || isNaN(endOfRange.getTime())) {
       return res.status(400).json({ message: 'Invalid date format' });
     }
 
     // Set to start of day in UTC
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+    startOfRange.setUTCHours(0, 0, 0, 0);
+    endOfRange.setUTCHours(23, 59, 59, 999);
 
     console.log('Query date range:', {
-      startOfDay: startOfDay.toISOString(),
-      endOfDay: endOfDay.toISOString()
+      startOfRange: startOfRange.toISOString(),
+      endOfRange: endOfRange.toISOString()
     });
 
     // Check database connection
-    console.log('Checking database connection...');
     if (mongoose.connection.readyState !== 1) {
       console.error('Database connection not ready. State:', mongoose.connection.readyState);
       return res.status(500).json({ message: 'Database connection error' });
     }
-    console.log('Database connection OK');
-
-    // First, check if the Attendance model exists
-    console.log('Verifying Attendance model...');
-    if (!mongoose.models.Attendance) {
-      console.error('Attendance model not found');
-      return res.status(500).json({ message: 'Attendance model not initialized' });
-    }
-    console.log('Attendance model OK');
-
-    // Log the query we're about to execute
-    const query = {
-      timestamp: {
-        $gte: startOfDay,
-        $lt: endOfDay
-      }
-    };
-    console.log('Executing MongoDB query:', JSON.stringify(query));
 
     // Fetch attendance records with user details
-    console.log('Fetching attendance records...');
-    let attendanceRecords;
-    try {
-      attendanceRecords = await Attendance.find(query)
-        .populate({
-          path: 'user',
-          select: 'name email',
-          model: 'User'
-        })
-        .lean()
-        .exec();
-
-      console.log(`Found ${attendanceRecords ? attendanceRecords.length : 0} records`);
-      
-      // Log the first record for debugging (excluding sensitive data)
-      if (attendanceRecords && attendanceRecords.length > 0) {
-        const sampleRecord = { ...attendanceRecords[0] };
-        if (sampleRecord.user) {
-          sampleRecord.user = {
-            _id: sampleRecord.user._id,
-            name: sampleRecord.user.name
-          };
-        }
-        console.log('Sample record:', JSON.stringify(sampleRecord, null, 2));
+    const attendanceRecords = await Attendance.find({
+      timestamp: {
+        $gte: startOfRange,
+        $lte: endOfRange
       }
-    } catch (dbError) {
-      console.error('Database query error:', dbError);
-      return res.status(500).json({
-        message: 'Error querying attendance records',
-        error: process.env.NODE_ENV === 'development' ? dbError.message : 'Database error'
-      });
-    }
+    })
+    .populate({
+      path: 'user',
+      select: 'name email',
+      model: 'User'
+    })
+    .lean()
+    .exec();
 
     if (!attendanceRecords || attendanceRecords.length === 0) {
-      console.log('No records found for date:', date);
-      return res.status(404).json({ message: 'No attendance records found for the specified date' });
+      return res.status(404).json({ message: 'No attendance records found for the specified date range' });
     }
 
     // Create workbook
-    console.log('Creating Excel workbook...');
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Attendance System';
     workbook.lastModifiedBy = 'Attendance System';
     workbook.created = new Date();
     workbook.modified = new Date();
 
-    // Add worksheet with error handling
-    console.log('Creating worksheet...');
-    let worksheet;
-    try {
-      worksheet = workbook.addWorksheet('Attendance', {
-        properties: { tabColor: { argb: 'FFC0000' } }
+    // Add worksheet
+    const worksheet = workbook.addWorksheet('Attendance');
+
+    // Add headers
+    worksheet.columns = [
+      { header: 'Employee Name', key: 'name', width: 20 },
+      { header: 'Email', key: 'email', width: 25 },
+      { header: 'Check In Time', key: 'checkIn', width: 20 },
+      { header: 'Check Out Time', key: 'checkOut', width: 20 },
+      { header: 'Status', key: 'status', width: 15 },
+      { header: 'Hours Worked', key: 'hoursWorked', width: 15 },
+      { header: 'Location', key: 'location', width: 30 }
+    ];
+
+    // Add data
+    attendanceRecords.forEach(record => {
+      worksheet.addRow({
+        name: record.user?.name || 'N/A',
+        email: record.user?.email || 'N/A',
+        checkIn: new Date(record.timestamp).toLocaleString(),
+        checkOut: record.checkOutTime ? new Date(record.checkOutTime).toLocaleString() : 'N/A',
+        status: record.status,
+        hoursWorked: record.hoursWorked || 0,
+        location: record.location?.address || 'N/A'
       });
-    } catch (worksheetError) {
-      console.error('Error creating worksheet:', worksheetError);
-      return res.status(500).json({
-        message: 'Error creating Excel worksheet',
-        error: process.env.NODE_ENV === 'development' ? worksheetError.message : 'Excel generation error'
-      });
-    }
-
-    // Define columns
-    console.log('Setting up worksheet columns...');
-    try {
-      worksheet.columns = [
-        { header: 'Date', key: 'date', width: 15 },
-        { header: 'Time', key: 'time', width: 12 },
-        { header: 'Name', key: 'name', width: 25 },
-        { header: 'Email', key: 'email', width: 35 },
-        { header: 'Location', key: 'location', width: 50 },
-        { header: 'Coordinates', key: 'coordinates', width: 25 },
-        { header: 'Last Updated', key: 'lastUpdated', width: 20 }
-      ];
-    } catch (columnError) {
-      console.error('Error setting up columns:', columnError);
-      return res.status(500).json({
-        message: 'Error setting up Excel columns',
-        error: process.env.NODE_ENV === 'development' ? columnError.message : 'Excel generation error'
-      });
-    }
-
-    // Style header row
-    console.log('Styling header row...');
-    try {
-      const headerRow = worksheet.getRow(1);
-      headerRow.font = { bold: true, size: 12 };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' }
-      };
-      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    } catch (styleError) {
-      console.error('Error styling header:', styleError);
-      // Continue despite styling error
-    }
-
-    // Add data rows
-    console.log('Adding data rows...');
-    let rowCount = 0;
-    for (const record of attendanceRecords) {
-      try {
-        const timestamp = new Date(record.timestamp);
-        const locationData = record.location || {};
-        const coordinates = locationData.coordinates || {};
-        
-        worksheet.addRow({
-          date: timestamp.toLocaleDateString('en-US'),
-          time: timestamp.toLocaleTimeString('en-US'),
-          name: record.user?.name || 'Unknown',
-          email: record.user?.email || 'Unknown',
-          location: locationData.address || 'No address',
-          coordinates: coordinates.latitude && coordinates.longitude 
-            ? `${coordinates.latitude}, ${coordinates.longitude}`
-            : 'No coordinates',
-          lastUpdated: locationData.lastUpdated 
-            ? new Date(locationData.lastUpdated).toLocaleString('en-US')
-            : 'N/A'
-        });
-        rowCount++;
-      } catch (rowError) {
-        console.error('Error processing record:', rowError);
-        console.error('Problematic record:', JSON.stringify(record, null, 2));
-        // Continue with next record
-      }
-    }
-
-    console.log(`Successfully added ${rowCount} rows`);
+    });
 
     // Set response headers
-    console.log('Setting response headers...');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=attendance-${date}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=attendance_${startDate}_to_${endDate || startDate}.xlsx`);
 
-    // Write to response stream
-    console.log('Writing Excel file to response...');
-    try {
-      await workbook.xlsx.write(res);
-      console.log('Excel file written successfully');
-      res.end();
-    } catch (writeError) {
-      console.error('Error writing Excel file:', writeError);
-      if (!res.headersSent) {
-        return res.status(500).json({
-          message: 'Error writing Excel file',
-          error: process.env.NODE_ENV === 'development' ? writeError.message : 'Internal server error'
-        });
-      }
-    }
-
+    // Write to response
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
-    console.error('Error in exportAttendance:', error);
-    console.error('Error stack:', error.stack);
-    if (!res.headersSent) {
-      res.status(500).json({
-        message: 'Error exporting attendance data',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-      });
-    }
+    console.error('Error exporting attendance:', error);
+    res.status(500).json({ 
+      message: 'Error exporting attendance data',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

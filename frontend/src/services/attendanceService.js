@@ -127,10 +127,23 @@ export const getAttendanceByDate = async (date) => {
 
 export const exportAttendance = async (startDate, endDate) => {
   try {
-    console.log('Exporting attendance from', startDate, 'to', endDate);
+    // If endDate is not provided, use the same date as startDate
+    if (!endDate) {
+      endDate = startDate;
+    }
+
+    // Format dates to ISO string
+    const formattedStartDate = new Date(startDate).toISOString();
+    const formattedEndDate = new Date(endDate).toISOString();
+
+    console.log('Exporting attendance from', formattedStartDate, 'to', formattedEndDate);
     const response = await axios.get(
-      `${API_URL}/attendance/export?startDate=${startDate}&endDate=${endDate}`,
+      `${API_URL}/attendance/export`,
       {
+        params: {
+          startDate: formattedStartDate,
+          endDate: formattedEndDate
+        },
         ...getAuthHeader(),
         responseType: 'blob'
       }

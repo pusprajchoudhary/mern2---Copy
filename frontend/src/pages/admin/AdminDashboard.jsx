@@ -590,9 +590,6 @@ const AdminDashboard = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Image
-                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -600,13 +597,13 @@ const AdminDashboard = () => {
                       <tr key={record._id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="h-10 w-10 flex-shrink-0">
+                            {/* <div className="h-10 w-10 flex-shrink-0">
                               <img
                                 className="h-10 w-10 rounded-full"
                                 src={record.user?.profileImage || '/default-avatar.png'}
                                 alt=""
                               />
-                            </div>
+                            </div> */}
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
                                 {record.user?.name}
@@ -643,14 +640,6 @@ const AdminDashboard = () => {
                           }`}>
                             {record.checkOutTime ? 'Completed' : 'In Progress'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <img
-                            src={record.photo}
-                            alt="Attendance"
-                            className="h-10 w-10 rounded-full object-cover cursor-pointer"
-                            onClick={() => window.open(record.photo, '_blank')}
-                          />
                         </td>
                       </tr>
                     ))}
