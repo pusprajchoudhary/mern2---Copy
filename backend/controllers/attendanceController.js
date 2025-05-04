@@ -75,16 +75,26 @@ const markAttendance = async (req, res) => {
       });
     }
 
-    // Validate location structure
-    if (!location.coordinates || !location.coordinates.latitude || !location.coordinates.longitude) {
-      console.error('Invalid location structure:', location);
+    // Check if user has already marked attendance today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existingAttendance = await Attendance.findOne({
+      user,
+      timestamp: {
+        $gte: today,
+        $lt: tomorrow
+      },
+      status: 'checked-in'
+    });
+
+    if (existingAttendance) {
+      console.log('User already has active check-in:', existingAttendance);
       return res.status(400).json({ 
-        message: 'Invalid location data',
-        details: {
-          coordinates: !location.coordinates ? 'Coordinates are required' : undefined,
-          latitude: !location.coordinates?.latitude ? 'Latitude is required' : undefined,
-          longitude: !location.coordinates?.longitude ? 'Longitude is required' : undefined
-        }
+        message: 'Already checked in for today',
+        attendance: existingAttendance
       });
     }
 
@@ -94,22 +104,7 @@ const markAttendance = async (req, res) => {
       location.coordinates.longitude
     );
 
-    // Check if user has already marked attendance in the last 9 hours
-    const latestAttendance = await Attendance.findOne({ user }).sort({ timestamp: -1 });
-    if (latestAttendance) {
-      const nineHoursAgo = new Date(Date.now() - 9 * 60 * 60 * 1000);
-      if (latestAttendance.timestamp > nineHoursAgo) {
-        console.log('User already marked attendance within the last 9 hours:', latestAttendance);
-        return res.status(400).json({ 
-          message: 'Attendance already marked within the last 9 hours',
-          attendance: latestAttendance
-        });
-      }
-    }
-
-    // Create a new Date object for the current time in UTC
-    const currentTime = new Date();
-    
+    // Create a new attendance record
     const newAttendance = new Attendance({
       user,
       location: {
@@ -121,14 +116,16 @@ const markAttendance = async (req, res) => {
         lastUpdated: new Date()
       },
       photo,
-      timestamp: currentTime,
+      timestamp: new Date(),
+      status: 'checked-in',
+      hoursWorked: 0,
+      checkOutTime: null
     });
 
-    console.log('Saving attendance record:', {
-      user,
-      location: newAttendance.location,
-      photo,
-      timestamp: currentTime.toISOString()
+    console.log('Creating new attendance record:', {
+      user: newAttendance.user,
+      timestamp: newAttendance.timestamp,
+      status: newAttendance.status
     });
 
     await newAttendance.save();
@@ -137,33 +134,13 @@ const markAttendance = async (req, res) => {
       message: 'Attendance marked successfully',
       attendance: {
         id: newAttendance._id,
-        location: newAttendance.location,
-        timestamp: newAttendance.timestamp
+        timestamp: newAttendance.timestamp,
+        status: newAttendance.status,
+        location: newAttendance.location
       }
     });
   } catch (error) {
-    console.error('Error marking attendance:', {
-      error: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-
-    // Handle specific error types
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: 'Validation error',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        details: error.errors
-      });
-    }
-
-    if (error.name === 'MongoError' || error.name === 'MongoServerError') {
-      return res.status(500).json({ 
-        message: 'Database error',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-
+    console.error('Error marking attendance:', error);
     res.status(500).json({ 
       message: 'Error marking attendance',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -518,23 +495,156 @@ const updateAttendanceLocation = async (req, res) => {
 // @access  Private
 const getTodayAttendance = async (req, res) => {
   try {
+    const userId = req.user._id;
+    console.log('Getting today\'s attendance for user:', userId);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    console.log('Date range:', {
+      start: today.toISOString(),
+      end: tomorrow.toISOString()
+    });
+
     const attendanceLogs = await Attendance.find({
+      user: userId,
       timestamp: {
         $gte: today,
         $lt: tomorrow
       }
-    }).populate('user', 'name email');
+    })
+    .sort({ timestamp: -1 })
+    .populate('user', 'name email');
+
+    console.log('Found attendance logs:', {
+      count: attendanceLogs.length,
+      logs: attendanceLogs.map(log => ({
+        id: log._id,
+        timestamp: log.timestamp,
+        status: log.status
+      }))
+    });
 
     res.json(attendanceLogs);
   } catch (error) {
     console.error('Error fetching today\'s attendance:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Error fetching attendance data',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+const markCheckout = async (req, res) => {
+  try {
+    const user = req.user._id;
+    const { location } = req.body;
+
+    console.log('Checkout request for user:', user);
+    console.log('Location data:', location);
+
+    // Validate location structure
+    if (!location || !location.coordinates || !location.coordinates.latitude || !location.coordinates.longitude) {
+      return res.status(400).json({ 
+        message: 'Invalid location data',
+        details: {
+          coordinates: !location?.coordinates ? 'Coordinates are required' : undefined,
+          latitude: !location?.coordinates?.latitude ? 'Latitude is required' : undefined,
+          longitude: !location?.coordinates?.longitude ? 'Longitude is required' : undefined
+        }
+      });
+    }
+
+    // Get human-readable address from coordinates
+    const address = await getAddressFromCoordinates(
+      location.coordinates.latitude,
+      location.coordinates.longitude
+    );
+
+    // Find today's check-in record
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    console.log('Searching for attendance between:', {
+      today: today.toISOString(),
+      tomorrow: tomorrow.toISOString(),
+      user: user
+    });
+
+    // Find the active check-in
+    const attendanceRecord = await Attendance.findOne({
+      user: user,
+      timestamp: {
+        $gte: today,
+        $lt: tomorrow
+      },
+      status: { $ne: 'checked-out' } // Find record that is not checked out
+    }).sort({ timestamp: -1 });
+
+    console.log('Found attendance record:', attendanceRecord);
+
+    if (!attendanceRecord) {
+      return res.status(400).json({ 
+        message: 'No active check-in found for today',
+        details: {
+          user,
+          dateRange: {
+            start: today,
+            end: tomorrow
+          }
+        }
+      });
+    }
+
+    // Calculate hours worked
+    const checkOutTime = new Date();
+    const hoursWorked = (checkOutTime - attendanceRecord.timestamp) / (1000 * 60 * 60);
+
+    console.log('Updating attendance record:', {
+      id: attendanceRecord._id,
+      checkInTime: attendanceRecord.timestamp,
+      checkOutTime: checkOutTime,
+      hoursWorked: hoursWorked
+    });
+
+    // Update the attendance record
+    attendanceRecord.checkOutTime = checkOutTime;
+    attendanceRecord.status = 'checked-out';
+    attendanceRecord.hoursWorked = parseFloat(hoursWorked.toFixed(2));
+    attendanceRecord.location = {
+      coordinates: {
+        latitude: parseFloat(location.coordinates.latitude),
+        longitude: parseFloat(location.coordinates.longitude)
+      },
+      address: address,
+      lastUpdated: new Date()
+    };
+
+    await attendanceRecord.save();
+    console.log('Updated attendance record:', attendanceRecord);
+
+    res.status(200).json({
+      message: 'Checkout successful',
+      attendance: {
+        id: attendanceRecord._id,
+        checkInTime: attendanceRecord.timestamp,
+        checkOutTime: attendanceRecord.checkOutTime,
+        hoursWorked: attendanceRecord.hoursWorked,
+        location: attendanceRecord.location,
+        status: attendanceRecord.status
+      }
+    });
+  } catch (error) {
+    console.error('Error marking checkout:', error);
+    res.status(500).json({ 
+      message: 'Error marking checkout',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -543,5 +653,6 @@ module.exports = {
   getAttendanceByDate,
   getTodayAttendance,
   exportAttendance,
-  updateAttendanceLocation
+  updateAttendanceLocation,
+  markCheckout
 };

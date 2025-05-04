@@ -20,11 +20,24 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        // Check for stored credentials first
+        const storedCredentials = localStorage.getItem('rememberedCredentials');
+        if (storedCredentials) {
+          const { email, password } = JSON.parse(storedCredentials);
+          const data = await login({ email, password });
+          if (data && !data.user.isBlocked) {
+            setUser(data.user);
+            return;
+          }
+        }
+
+        // If no stored credentials or login failed, try normal session
         const userData = await getCurrentUser();
         if (userData && userData.isBlocked) {
           setUser(null);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          localStorage.removeItem('rememberedCredentials');
           setError('Your account has been blocked. Please contact the administrator.');
         } else {
           setUser(userData);
@@ -50,11 +63,20 @@ export const AuthProvider = ({ children }) => {
         return { isBlocked: true };
       }
       
+      // Handle remember me
+      if (credentials.rememberMe) {
+        localStorage.setItem('rememberedCredentials', JSON.stringify({
+          email: credentials.email,
+          password: credentials.password
+        }));
+      } else {
+        localStorage.removeItem('rememberedCredentials');
+      }
+      
       setUser(data.user);
       toast.success('Login successful!');
       return data;
     } catch (error) {
-      // Handle blocked user error
       if (error.response?.status === 403) {
         setError('Your account has been blocked. Please contact the administrator.');
         return { isBlocked: true };
@@ -87,6 +109,7 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      // Don't remove remembered credentials on logout if remember me was checked
       toast.success('Logged out successfully!');
     } catch (error) {
       setError(error.message);

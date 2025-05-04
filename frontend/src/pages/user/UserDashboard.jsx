@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Webcam from 'react-webcam';
 import { toast } from 'react-toastify';
-import { markAttendance } from '../../services/attendanceService';
+import { markAttendance, markCheckout, getTodayAttendance } from '../../services/attendanceService';
+import { getLatestNotification, markNotificationAsRead } from '../../services/notificationService';
 import NotificationButton from '../../components/NotificationButton';
 
 const UserDashboard = () => {
@@ -14,6 +15,7 @@ const UserDashboard = () => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [isCheckedOut, setIsCheckedOut] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
@@ -22,10 +24,14 @@ const UserDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [checkInTime, setCheckInTime] = useState(null);
+  const [checkOutTime, setCheckOutTime] = useState(null);
+  const [showCheckoutWarning, setShowCheckoutWarning] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState('');
   const [capturedImage, setCapturedImage] = useState(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [isWebcamReady, setIsWebcamReady] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
+  const [hoursWorked, setHoursWorked] = useState(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -48,49 +54,106 @@ const UserDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Check if attendance is already marked for today and if 12 hours have passed
+  // Check if attendance is already marked for today
   useEffect(() => {
-    const checkAttendanceStatus = () => {
-      if (!user?._id) return; // Don't proceed if user is not loaded
-
-      const today = new Date().toISOString().split('T')[0];
-      const storedAttendance = localStorage.getItem(`attendance_${user._id}_${today}`);
-      
-      if (storedAttendance) {
-        const attendanceData = JSON.parse(storedAttendance);
-        const attendanceTime = new Date(attendanceData.timestamp);
-        const currentTime = new Date();
+    const checkTodayAttendance = async () => {
+      try {
+        console.log('Checking today\'s attendance...');
+        const response = await getTodayAttendance();
+        console.log('Today\'s attendance response:', response);
         
-        // Calculate time difference in hours
-        const hoursDiff = (currentTime - attendanceTime) / (1000 * 60 * 60);
-        
-        if (hoursDiff >= 12) { // Changed from 24 to 12 hours
-          // Reset attendance status after 12 hours
-          localStorage.removeItem(`attendance_${user._id}_${today}`);
-          setIsCheckedIn(false);
-          setCheckInTime(null);
-          setMessage('You can mark attendance again');
-        } else {
-          setIsCheckedIn(true);
-          setCheckInTime(new Date(attendanceData.timestamp));
-          setMessage('Attendance already marked for today');
-        }
-      } else {
-        // Reset status if no attendance record found for this user
+        // Reset states first
         setIsCheckedIn(false);
+        setIsCheckedOut(false);
         setCheckInTime(null);
-        setMessage('You can mark your attendance');
+        setCheckOutTime(null);
+        setHoursWorked(0);
+        
+        if (response && response.length > 0) {
+          // Get the latest attendance record
+          const todayRecord = response[0];
+          console.log('Today\'s record:', todayRecord);
+          
+          if (todayRecord.status === 'checked-in') {
+            console.log('User is currently checked in');
+            setIsCheckedIn(true);
+            setIsCheckedOut(false);
+            if (todayRecord.timestamp) {
+              setCheckInTime(new Date(todayRecord.timestamp));
+            }
+          } else if (todayRecord.status === 'checked-out') {
+            console.log('User is checked out');
+            setIsCheckedIn(false);
+            setIsCheckedOut(true);
+            if (todayRecord.timestamp) {
+              setCheckInTime(new Date(todayRecord.timestamp));
+            }
+            if (todayRecord.checkOutTime) {
+              setCheckOutTime(new Date(todayRecord.checkOutTime));
+            }
+          }
+          
+          setHoursWorked(todayRecord.hoursWorked || 0);
+          
+          console.log('Set attendance states:', {
+            isCheckedIn: todayRecord.status === 'checked-in',
+            isCheckedOut: todayRecord.status === 'checked-out',
+            checkInTime: todayRecord.timestamp,
+            checkOutTime: todayRecord.checkOutTime,
+            hoursWorked: todayRecord.hoursWorked
+          });
+        } else {
+          console.log('No attendance record found for today - new user or new day');
+        }
+      } catch (error) {
+        console.error('Error checking today\'s attendance:', error);
+        // Reset states on error
+        setIsCheckedIn(false);
+        setIsCheckedOut(false);
+        setCheckInTime(null);
+        setCheckOutTime(null);
+        setHoursWorked(0);
       }
     };
 
-    // Check immediately when component mounts
-    checkAttendanceStatus();
+    checkTodayAttendance();
+  }, []);
 
-    // Set up interval to check every hour
-    const interval = setInterval(checkAttendanceStatus, 60 * 60 * 1000);
+  // Location tracking
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, [user?._id]);
+    const getLocation = () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            setUserLocation(`Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`);
+            setIsLocationEnabled(true);
+            setMessage("Location enabled successfully");
+          },
+          (error) => {
+            console.error('Error getting location:', error);
+            setMessage("Failed to access location: " + error.message);
+            setIsLocationEnabled(false);
+            setUserLocation(null);
+          }
+        );
+      } else {
+        setMessage("Geolocation is not supported by your browser");
+        setIsLocationEnabled(false);
+        setUserLocation(null);
+      }
+    };
+
+    getLocation();
+    const locationInterval = setInterval(getLocation, 30000);
+
+    return () => clearInterval(locationInterval);
+  }, [user, navigate]);
 
   const handleLogout = () => {
     logoutUser();
@@ -227,7 +290,7 @@ const UserDashboard = () => {
         return;
       }
 
-      if (location === "Location access denied") {
+      if (!isLocationEnabled) {
         setMessage("Please enable location access");
         return;
       }
@@ -269,48 +332,181 @@ const UserDashboard = () => {
       formData.append('location[coordinates][longitude]', currentLocation.coordinates.longitude);
       formData.append('location[address]', currentLocation.address);
       formData.append('location[lastUpdated]', currentLocation.lastUpdated);
-      formData.append('userId', user._id);
-      formData.append('email', user.email);
-      formData.append('timestamp', new Date().toISOString());
-      formData.append('date', formatDateForDisplay(currentTime));
-      formData.append('time', formatTimeForDisplay(currentTime));
 
       console.log('Submitting attendance with:', {
         hasImage: formData.has('image'),
-        hasLocation: formData.has('location'),
-        location: {
-          coordinates: {
-            latitude: formData.get('location[coordinates][latitude]'),
-            longitude: formData.get('location[coordinates][longitude]')
-          },
-          address: formData.get('location[address]')
-        },
-        userId: formData.get('userId'),
-        timestamp: formData.get('timestamp')
+        hasLocation: formData.has('location[coordinates][latitude]'),
+        location: currentLocation
       });
 
       const response = await markAttendance(formData);
+      console.log('Attendance response:', response);
       
+      // Update states after successful check-in
       setIsCheckedIn(true);
+      setIsCheckedOut(false);
       setCheckInTime(new Date());
       setShowSuccessPopup(true);
       setShowCamera(false);
       setMessage("Attendance marked successfully!");
       toast.success('Attendance marked successfully!');
 
-      // Store attendance status in localStorage with user ID
-      const today = new Date().toISOString().split('T')[0];
-      localStorage.setItem(`attendance_${user._id}_${today}`, JSON.stringify({
-        status: 'marked',
-        timestamp: new Date().toISOString(),
-        location: currentLocation,
-        userId: user._id
-      }));
     } catch (error) {
       console.error('Error marking attendance:', error);
-      const errorMessage = error.message || "Error marking attendance";
+      const errorMessage = error.response?.data?.message || error.message;
       setMessage(errorMessage);
       toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCheckout = async () => {
+    try {
+      console.log('Starting checkout process...');
+      setIsLoading(true);
+      setMessage("");
+
+      if (!userLocation) {
+        console.log('No user location found');
+        setMessage("Please enable location access");
+        return;
+      }
+
+      // Get current location
+      let currentLocation;
+      try {
+        console.log('Getting current location...');
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+        
+        currentLocation = {
+          coordinates: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          },
+          address: `${position.coords.latitude}, ${position.coords.longitude}`,
+          lastUpdated: new Date().toISOString()
+        };
+        console.log('Location obtained:', currentLocation);
+      } catch (error) {
+        console.error('Error getting location:', error);
+        setMessage("Failed to get location");
+        return;
+      }
+
+      // Calculate hours worked
+      const now = new Date();
+      const checkInDate = checkInTime ? new Date(checkInTime) : null;
+      
+      if (!checkInDate) {
+        console.log('No check-in time found');
+        setMessage("You need to check in first");
+        return;
+      }
+
+      const hoursWorked = (now - checkInDate) / (1000 * 60 * 60);
+      console.log('Hours worked:', hoursWorked);
+
+      // If less than 9 hours, show warning
+      if (hoursWorked < 9) {
+        console.log('Less than 9 hours worked, showing warning');
+        setShowWarning(true);
+        return;
+      }
+
+      console.log('Calling markCheckout API with location:', currentLocation);
+      const response = await markCheckout(currentLocation);
+      console.log('Checkout API response:', response);
+      
+      // Update states for successful check-out
+      setIsCheckedOut(true);
+      setCheckOutTime(now);
+      setShowSuccessPopup(true);
+      setHoursWorked(response.attendance.hoursWorked);
+      
+      // Show success message
+      toast.success('Checkout successful! Good work!');
+      
+      // Hide success popup after 3 seconds
+      setTimeout(() => {
+        setShowSuccessPopup(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      const errorMessage = error.response?.data?.message || error.message;
+      setMessage("Failed to mark checkout: " + errorMessage);
+      toast.error(errorMessage || 'Checkout failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleWarningConfirm = async () => {
+    console.log('Handling warning confirmation...');
+    setShowWarning(false);
+    try {
+      setIsLoading(true);
+      
+      // Get current location
+      let currentLocation;
+      try {
+        console.log('Getting current location for early checkout...');
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+        
+        currentLocation = {
+          coordinates: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          },
+          address: `${position.coords.latitude}, ${position.coords.longitude}`,
+          lastUpdated: new Date().toISOString()
+        };
+        console.log('Location obtained for early checkout:', currentLocation);
+      } catch (error) {
+        console.error('Error getting location for early checkout:', error);
+        toast.error("Failed to get location");
+        return;
+      }
+
+      // First check if we have a valid check-in
+      const todayAttendance = await getTodayAttendance();
+      console.log('Today\'s attendance before checkout:', todayAttendance);
+      
+      if (!todayAttendance || todayAttendance.length === 0) {
+        toast.error('No check-in record found for today');
+        return;
+      }
+
+      const todayRecord = todayAttendance[0];
+      if (todayRecord.status !== 'checked-in') {
+        toast.error('You are already checked out');
+        return;
+      }
+
+      console.log('Calling markCheckout API for early checkout...');
+      const response = await markCheckout(currentLocation);
+      console.log('Early checkout API response:', response);
+      
+      setIsCheckedOut(true);
+      setCheckOutTime(new Date());
+      setHoursWorked(response.attendance.hoursWorked);
+      setShowSuccessPopup(true);
+      toast.warning('Early checkout recorded. Please try to complete your full shift next time.');
+      
+      // Hide success popup after 3 seconds
+      setTimeout(() => {
+        setShowSuccessPopup(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Early checkout error:', error);
+      const errorMessage = error.response?.data?.message || error.message;
+      const errorDetails = error.response?.data?.details;
+      console.error('Error details:', errorDetails);
+      toast.error(errorMessage || 'Error checking out');
     } finally {
       setIsLoading(false);
     }
@@ -386,18 +582,34 @@ const UserDashboard = () => {
                 Checked in at {formatTimeForDisplay(checkInTime)}
               </p>
             )}
+            {isCheckedOut && checkOutTime && (
+              <p className="text-xs sm:text-sm text-red-200">
+                Checked out at {formatTimeForDisplay(checkOutTime)}
+              </p>
+            )}
           </div>
           <div className="flex gap-3 sm:gap-4 mt-4 sm:mt-6">
             <button
               onClick={() => setShowCamera(true)}
-              disabled={isCheckedIn}
+              disabled={isCheckedIn && !isCheckedOut}
               className={`px-3 sm:px-4 py-2 rounded-lg ${
-                isCheckedIn 
+                isCheckedIn && !isCheckedOut
                 ? 'bg-gray-400 cursor-not-allowed' 
                 : 'bg-white text-red-600 hover:bg-gray-100'
               }`}
             >
-              {isCheckedIn ? 'Already Checked In' : 'Mark Attendance'}
+              {isCheckedIn && !isCheckedOut ? 'Already Checked In' : 'Mark Attendance'}
+            </button>
+            <button
+              onClick={handleCheckout}
+              disabled={!isCheckedIn || isCheckedOut || isLoading}
+              className={`px-3 sm:px-4 py-2 rounded-lg ${
+                !isCheckedIn || isCheckedOut || isLoading
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-white text-red-600 hover:bg-gray-100'
+              }`}
+            >
+              {isLoading ? 'Processing...' : isCheckedOut ? 'Checked Out' : 'Check Out'}
             </button>
           </div>
         </div>
@@ -407,9 +619,15 @@ const UserDashboard = () => {
           <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-base sm:text-lg font-semibold">Mark Your Attendance</h3>
+                <h3 className="text-base sm:text-lg font-semibold">
+                  {isCheckedOut ? 'Mark New Attendance' : 'Mark Your Attendance'}
+                </h3>
                 <button
-                  onClick={() => setShowCamera(false)}
+                  onClick={() => {
+                    setShowCamera(false);
+                    setCapturedImage(null);
+                    setShowImagePreview(false);
+                  }}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   ✕
@@ -541,24 +759,58 @@ const UserDashboard = () => {
         )}
       </div>
 
+      {/* Checkout Warning Popup */}
+      {showWarning && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black opacity-50"></div>
+          <div className="bg-white rounded-lg p-8 shadow-xl z-10 max-w-md w-full mx-4 relative">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Warning: Early Checkout</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                You haven't completed your 9-hour shift yet. Are you sure you want to check out early?
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={handleWarningConfirm}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Yes, Check Out
+                </button>
+                <button
+                  onClick={() => setShowWarning(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Success Popup */}
       {showSuccessPopup && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="fixed inset-0 bg-black opacity-50"></div>
-          <div className="bg-white rounded-lg p-6 sm:p-8 shadow-xl z-10 max-w-md w-full mx-4 relative">
+          <div className="bg-white rounded-lg p-8 shadow-xl z-10 max-w-md w-full mx-4 relative">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-green-100 mb-3 sm:mb-4">
-                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">Attendance Marked Successfully!</h3>
-              <p className="text-xs sm:text-sm text-gray-500 mb-4">
-                Checked in at {checkInTime ? formatTimeForDisplay(checkInTime) : ''}
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {isCheckedOut ? 'Checkout Successful!' : 'Attendance Marked Successfully!'}
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {isCheckedOut 
+                  ? `Checked out at ${checkOutTime ? formatTimeForDisplay(checkOutTime) : ''}`
+                  : `Checked in at ${checkInTime ? formatTimeForDisplay(checkInTime) : ''}`
+                }
               </p>
               <button
                 onClick={() => setShowSuccessPopup(false)}
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-sm sm:text-base font-medium text-white hover:bg-red-700 focus:outline-none"
+                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:text-sm"
               >
                 Close
               </button>

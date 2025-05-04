@@ -37,6 +37,19 @@ const attendanceSchema = new mongoose.Schema(
       required: true,
       default: Date.now,
     },
+    checkOutTime: {
+      type: Date,
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: ['checked-in', 'checked-out'],
+      default: 'checked-in',
+    },
+    hoursWorked: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

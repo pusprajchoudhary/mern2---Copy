@@ -265,7 +265,7 @@ const AdminDashboard = () => {
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'users', label: 'Users', icon: '👥' },
     { id: 'attendance', label: 'Attendance', icon: '📝' },
-    { id: 'report', label: 'Report', icon: '📈' },
+    // { id: 'report', label: 'Report', icon: '📈' },
     { id: 'policies', label: 'Policies', icon: '📢' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
@@ -303,7 +303,7 @@ const AdminDashboard = () => {
         return (
           <div className="space-y-6">
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <div className="bg-white p-4 md:p-6 rounded-lg shadow">
                 <div className="flex items-center justify-between">
                   <div>
@@ -355,23 +355,6 @@ const AdminDashboard = () => {
                   <span className="text-sm text-gray-500">Standard Users</span>
                 </div>
               </div>
-
-              <div className="bg-white p-4 md:p-6 rounded-lg shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">User Activity</p>
-                    <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.lastLogin).length}</p>
-                  </div>
-                  <div className="p-3 bg-yellow-100 rounded-full">
-                    <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <span className="text-sm text-gray-500">Active in last 24h</span>
-                </div>
-              </div>
             </div>
 
             {/* Recent Activity */}
@@ -405,7 +388,7 @@ const AdminDashboard = () => {
             {/* Quick Actions */}
             <div className="bg-white p-4 md:p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <button
                   onClick={() => setIsModalOpen(true)}
                   className="flex items-center justify-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
@@ -415,23 +398,25 @@ const AdminDashboard = () => {
                   </svg>
                   <span className="text-sm font-medium text-gray-900">Add New User</span>
                 </button>
+
                 <button
-                  onClick={() => setActiveSection('users')}
+                  onClick={() => handleSectionClick('attendance')}
                   className="flex items-center justify-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
                 >
                   <svg className="w-6 h-6 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-900">Manage Users</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('attendance')}
-                  className="flex items-center justify-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                >
-                  <svg className="w-6 h-6 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                   <span className="text-sm font-medium text-gray-900">View Attendance</span>
+                </button>
+
+                <button
+                  onClick={() => handleSectionClick('policies')}
+                  className="flex items-center justify-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                >
+                  <svg className="w-6 h-6 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Send Announcement</span>
                 </button>
               </div>
             </div>
@@ -509,85 +494,169 @@ const AdminDashboard = () => {
         );
       case 'attendance':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold mb-4">Calendar</h2>
-              <Calendar
-                onChange={handleDateChange}
-                value={selectedDate}
-                className="w-full border-none"
-              />
-            </div>
-
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-                <h2 className="text-xl font-semibold mb-2 md:mb-0">
-                  Attendance Logs for {format(selectedDate, 'MMMM d, yyyy')}
-                </h2>
-                <button
-                  onClick={handleExportAttendance}
-                  disabled={attendanceLoading || attendanceLogs.length === 0}
-                  className="w-full md:w-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {attendanceLoading ? 'Exporting...' : 'Export Attendance'}
-                </button>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-semibold mb-4">Calendar</h2>
+                <Calendar
+                  onChange={handleDateChange}
+                  value={selectedDate}
+                  className="w-full border-none"
+                />
               </div>
-              
-              {attendanceLoading ? (
-                <div className="text-center py-4">Loading...</div>
-              ) : attendanceLogs.length > 0 ? (
-                <div className="space-y-4">
-                  {attendanceLogs.map((log) => (
-                    <div key={log._id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-start space-x-4">
-                          <div className="w-16 h-16 rounded-lg overflow-hidden">
-                            <img 
-                              src={`/uploads/${log.photo}`} 
-                              alt={`${log.user?.name}'s attendance`}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = '/default-avatar.png';
-                              }}
-                            />
-                          </div>
-                        <div>
-                            <h3 className="font-semibold">{log.user?.name}</h3>
-                          <p className="text-sm text-gray-600">
-                              Time: {formatDate(log.timestamp)}
-                          </p>
-                            <div className="mt-2">
-                          <p className="text-sm text-gray-600">
-                                Location: {formatLocation(log.location)}
+
+              <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                  <h2 className="text-xl font-semibold mb-2 md:mb-0">
+                    Attendance Logs for {format(selectedDate, 'MMMM d, yyyy')}
+                  </h2>
+                  <button
+                    onClick={handleExportAttendance}
+                    disabled={attendanceLoading || attendanceLogs.length === 0}
+                    className="w-full md:w-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {attendanceLoading ? 'Exporting...' : 'Export Attendance'}
+                  </button>
+                </div>
+                
+                {attendanceLoading ? (
+                  <div className="text-center py-4">Loading...</div>
+                ) : attendanceLogs.length > 0 ? (
+                  <div className="space-y-4">
+                    {attendanceLogs.map((log) => (
+                      <div key={log._id} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-start space-x-4">
+                            <div className="w-16 h-16 rounded-lg overflow-hidden">
+                              <img 
+                                src={`/uploads/${log.photo}`} 
+                                alt={`${log.user?.name}'s attendance`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = '/default-avatar.png';
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">{log.user?.name}</h3>
+                              <p className="text-sm text-gray-600">
+                                Time: {formatDate(log.timestamp)}
                               </p>
-                              <p className="text-xs text-gray-500">
-                                Last Updated: {log.location?.lastUpdated ? new Date(log.location.lastUpdated).toLocaleTimeString() : 'N/A'}
-                          </p>
+                              <div className="mt-2">
+                                <p className="text-sm text-gray-600">
+                                  Location: {formatLocation(log.location)}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Last Updated: {log.location?.lastUpdated ? new Date(log.location.lastUpdated).toLocaleTimeString() : 'N/A'}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                      {log.locationHistory && log.locationHistory.length > 0 && (
-                        <div className="mt-2 pl-20">
-                          <h4 className="text-sm font-medium text-gray-700">Location History:</h4>
-                          <div className="mt-1 space-y-1">
-                            {log.locationHistory.map((loc, index) => (
-                              <div key={index} className="text-xs text-gray-500">
-                                {new Date(loc.time).toLocaleTimeString()} - {formatLocation(loc)}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    No attendance records found for this date
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Attendance History Table */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Attendance History</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Employee
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Check In
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Check Out
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Location
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Image
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {attendanceLogs.map((record) => (
+                      <tr key={record._id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 flex-shrink-0">
+                              <img
+                                className="h-10 w-10 rounded-full"
+                                src={record.user?.profileImage || '/default-avatar.png'}
+                                alt=""
+                              />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {record.user?.name}
                               </div>
-                            ))}
+                              <div className="text-sm text-gray-500">
+                                {record.user?.email}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4 text-gray-500">
-                  No attendance records found for this date
-                </div>
-              )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {new Date(record.timestamp).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {new Date(record.timestamp).toLocaleTimeString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : 'Not checked out'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {formatLocation(record.location)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            record.checkOutTime ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {record.checkOutTime ? 'Completed' : 'In Progress'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <img
+                            src={record.photo}
+                            alt="Attendance"
+                            className="h-10 w-10 rounded-full object-cover cursor-pointer"
+                            onClick={() => window.open(record.photo, '_blank')}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );

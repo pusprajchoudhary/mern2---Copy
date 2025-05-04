@@ -4,7 +4,8 @@ const {
   getAttendanceByDate, 
   exportAttendance, 
   getTodayAttendance, 
-  updateAttendanceLocation 
+  updateAttendanceLocation,
+  markCheckout 
 } = require('../controllers/attendanceController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const multer = require('multer');
@@ -69,6 +70,9 @@ router.post('/mark',
   },
   markAttendance
 );
+
+// POST: Mark checkout
+router.post('/checkout', protect, markCheckout);
 
 // GET: Get attendance data for a specific date
 router.get('/date/:date', protect, getAttendanceByDate);
