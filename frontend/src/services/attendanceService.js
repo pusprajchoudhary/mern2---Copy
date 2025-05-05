@@ -157,15 +157,14 @@ export const exportAttendance = async (startDate, endDate) => {
 };
 
 // Update location for attendance
-export const updateAttendanceLocation = async (attendanceId, location) => {
+export const updateAttendanceLocation = async (locationData) => {
   try {
-    console.log('Updating attendance location for ID:', attendanceId);
-    const response = await axios.put(
-      `${API_URL}/attendance/${attendanceId}/location`,
-      { location },
-      getAuthHeader()
-    );
-    console.log('Location updated successfully:', response.data);
+    const response = await axios.put(`${API_URL}/attendance/location`, locationData, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
+    });
     return response.data;
   } catch (error) {
     console.error('Error updating attendance location:', error);
@@ -177,14 +176,7 @@ export const updateAttendanceLocation = async (attendanceId, location) => {
 export const startAttendanceLocationTracking = async (attendanceId, onLocationUpdate) => {
   const handleLocationUpdate = async (locationData) => {
     try {
-      await updateAttendanceLocation(attendanceId, {
-        coordinates: {
-          latitude: locationData.coordinates.latitude,
-          longitude: locationData.coordinates.longitude
-        },
-        address: locationData.address,
-        lastUpdated: locationData.lastUpdated
-      });
+      await updateAttendanceLocation(locationData);
       
       if (onLocationUpdate) {
         onLocationUpdate(locationData);

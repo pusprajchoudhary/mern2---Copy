@@ -3,9 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Webcam from 'react-webcam';
 import { toast } from 'react-toastify';
-import { markAttendance, markCheckout, getTodayAttendance } from '../../services/attendanceService';
+import { markAttendance, markCheckout, getTodayAttendance, updateAttendanceLocation } from '../../services/attendanceService';
 import { getLatestNotification, markNotificationAsRead } from '../../services/notificationService';
 import NotificationButton from '../../components/NotificationButton';
+import { startLocationTracking } from '../../services/locationService';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ const UserDashboard = () => {
   const [isWebcamReady, setIsWebcamReady] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [hoursWorked, setHoursWorked] = useState(0);
+  const [locationTrackingStopper, setLocationTrackingStopper] = useState(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -350,6 +352,17 @@ const UserDashboard = () => {
       setShowCamera(false);
       setMessage("Attendance marked successfully!");
       toast.success('Attendance marked successfully!');
+      // Start periodic location tracking after successful check-in
+      const tracker = await startLocationTracking(async (locationData) => {
+        try {
+          await updateAttendanceLocation(locationData);
+          console.log('Location update sent to backend:', locationData);
+        } catch (error) {
+          console.error('Error sending location update:', error);
+        }
+      });
+      tracker.start();
+      setLocationTrackingStopper(() => tracker.stop);
 
     } catch (error) {
       console.error('Error marking attendance:', error);

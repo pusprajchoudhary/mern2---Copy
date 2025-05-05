@@ -104,7 +104,7 @@ export const startLocationTracking = async (onLocationUpdate) => {
     if (!isTracking) {
       console.log('Starting location tracking with 30-minute intervals...');
       isTracking = true;
-      // Update location every 30 minutes (30 * 60 * 1000 milliseconds)
+      // Update location every 30 minutes
       trackingInterval = setInterval(updateLocation, 30 * 60 * 1000);
       // Initial update
       updateLocation();

@@ -1,4 +1,4 @@
-const Attendance = require('../models/attendanceModel');
+const Attendance = require('../models/AttendanceModel');
 const User = require('../models/userModel');
 const ExcelJS = require('exceljs');
 const mongoose = require('mongoose');
@@ -348,22 +348,27 @@ const exportAttendance = async (req, res) => {
   }
 };
 
-// @desc    Update attendance location
-// @route   PUT /api/attendance/:id/location
+// @desc    Update user's location for today's attendance record
+// @route   PUT /api/attendance/location
 // @access  Private
 const updateAttendanceLocation = async (req, res) => {
   try {
-    const attendance = await Attendance.findById(req.params.id);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    // Find today's attendance record for the user
+    const attendance = await Attendance.findOne({
+      user: req.user._id,
+      timestamp: { $gte: today, $lt: tomorrow }
+    });
 
     if (!attendance) {
-      return res.status(404).json({ message: 'Attendance record not found' });
+      return res.status(404).json({ message: 'No attendance record found for today.' });
     }
 
-    // Check if the user is authorized to update this attendance record
-    if (attendance.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized to update this attendance record' });
-    }
-
+    // Update the location
     attendance.location = {
       coordinates: {
         latitude: req.body.coordinates.latitude,
@@ -373,11 +378,26 @@ const updateAttendanceLocation = async (req, res) => {
       lastUpdated: new Date()
     };
 
-    const updatedAttendance = await attendance.save();
-    res.json(updatedAttendance);
+    // Push to locationHistory
+    attendance.locationHistory = attendance.locationHistory || [];
+    attendance.locationHistory.push({
+      coordinates: {
+        latitude: req.body.coordinates.latitude,
+        longitude: req.body.coordinates.longitude
+      },
+      address: req.body.address,
+      lastUpdated: new Date()
+    });
+
+    await attendance.save();
+
+    res.json({
+      message: 'Location updated successfully',
+      attendance: attendance
+    });
   } catch (error) {
-    console.error('Error updating attendance location:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error updating location:', error);
+    res.status(500).json({ message: 'Error updating location', error: error.message });
   }
 };
 
@@ -539,11 +559,43 @@ const markCheckout = async (req, res) => {
   }
 };
 
+// @desc    Get location history for a user for today
+// @route   GET /api/attendance/:userId/location-history
+// @access  Admin
+const getUserLocationHistory = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    // Find today's attendance record for the user
+    const attendance = await Attendance.findOne({
+      user: userId,
+      timestamp: { $gte: today, $lt: tomorrow }
+    });
+
+    if (!attendance) {
+      return res.status(404).json({ message: 'No attendance record found for today.' });
+    }
+
+    res.json({
+      user: attendance.user,
+      locationHistory: attendance.locationHistory || []
+    });
+  } catch (error) {
+    console.error('Error fetching user location history:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   markAttendance,
   getAttendanceByDate,
   getTodayAttendance,
   exportAttendance,
   updateAttendanceLocation,
-  markCheckout
+  markCheckout,
+  getUserLocationHistory
 };

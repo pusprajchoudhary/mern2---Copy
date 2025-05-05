@@ -32,6 +32,16 @@ const attendanceSchema = new mongoose.Schema(
         default: Date.now,
       },
     },
+    locationHistory: [
+      {
+        coordinates: {
+          latitude: Number,
+          longitude: Number,
+        },
+        address: String,
+        lastUpdated: { type: Date, default: Date.now },
+      }
+    ],
     timestamp: {
       type: Date,
       required: true,

@@ -10,6 +10,7 @@ import { getAttendanceByDate, exportAttendance } from '../../services/attendance
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { sendNotification } from '../../services/notificationService';
+import TrackUser from './TrackUser';
 
 const formatDate = (date) => {
   try {
@@ -265,8 +266,8 @@ const AdminDashboard = () => {
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'users', label: 'Users', icon: '👥' },
     { id: 'attendance', label: 'Attendance', icon: '📝' },
-    // { id: 'report', label: 'Report', icon: '📈' },
     { id: 'policies', label: 'Policies', icon: '📢' },
+    { id: 'trackuser', label: 'Track User', icon: '🛰️' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
@@ -700,6 +701,8 @@ const AdminDashboard = () => {
             </form>
           </div>
         );
+      case 'trackuser':
+        return <TrackUser />;
       case 'settings':
         return (
           <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow">

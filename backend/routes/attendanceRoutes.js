@@ -5,7 +5,8 @@ const {
   exportAttendance, 
   getTodayAttendance, 
   updateAttendanceLocation,
-  markCheckout 
+  markCheckout,
+  getUserLocationHistory
 } = require('../controllers/attendanceController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const multer = require('multer');
@@ -85,6 +86,12 @@ router.get('/today', protect, getTodayAttendance);
 
 // PUT: Update attendance location
 router.put('/:id/location', protect, updateAttendanceLocation);
+
+// GET: Get location history for a user for today (admin only)
+router.get('/:userId/location-history', protect, admin, getUserLocationHistory);
+
+// PUT: Update attendance location (for periodic updates)
+router.put('/location', protect, require('../controllers/attendanceController').updateAttendanceLocation);
 
 // Error handling middleware
 router.use(handleMulterError);
