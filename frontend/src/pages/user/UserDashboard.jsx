@@ -7,6 +7,7 @@ import { markAttendance, markCheckout, getTodayAttendance, updateAttendanceLocat
 import { getLatestNotification, markNotificationAsRead } from '../../services/notificationService';
 import NotificationButton from '../../components/NotificationButton';
 import { startLocationTracking } from '../../services/locationService';
+import UserChat from '../../components/chat/UserChat';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -525,6 +526,41 @@ const UserDashboard = () => {
     }
   };
 
+  // Add this function to handle manual location send
+  const handleSendLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
+
+      const locationData = {
+        coordinates: {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        }
+      };
+
+      await updateAttendanceLocation(locationData);
+      toast.success('Location sent successfully!');
+    } catch (error) {
+      console.error('Error sending location:', error);
+      toast.error('Failed to send location: ' + error.message);
+    }
+  };
+
+  // Utility to get initials from name
+  function getInitials(name) {
+    if (!name) return '';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -534,25 +570,17 @@ const UserDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 sm:p-4">
+    <div className="min-h-screen bg-gray-100" style={{ scrollBehavior: 'smooth' }}>
       {/* Header section */}
       <header className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 bg-white shadow-sm rounded-xl p-3 sm:p-4">
         {/* Left Side - Profile and Username */}
         <div className="flex items-center gap-3 mb-3 sm:mb-0">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-200 overflow-hidden">
-            <img 
-              src={user?.profileImage || '/default-avatar.png'} 
-              alt="Profile" 
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/default-avatar.png';
-              }}
-            />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-red-600 flex items-center justify-center text-xl sm:text-2xl font-bold text-white">
+            {getInitials(user?.name)}
           </div>
           <div className="flex flex-col">
             <span className="text-base sm:text-lg font-semibold text-gray-800">{user?.name || 'User'}</span>
-            <span className="text-xs sm:text-sm text-gray-500">Employee</span>
+            <span className="text-xs sm:text-sm text-gray-500">{user?.designation}</span>
           </div>
         </div>
 
@@ -572,6 +600,12 @@ const UserDashboard = () => {
           {/* Notification Bell */}
           <NotificationButton />
           <button
+            onClick={handleSendLocation}
+            className="text-xs sm:text-sm px-3 sm:px-4 py-1 sm:py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            Send My Location
+          </button>
+          <button
             onClick={handleLogout}
             className="text-xs sm:text-sm px-3 sm:px-4 py-1 sm:py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
           >
@@ -581,7 +615,7 @@ const UserDashboard = () => {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+      <div className="container mx-auto px-4 py-8">
         {/* Welcome Card with Live Time */}
         <div className="bg-red-600 text-white p-4 sm:p-6 rounded-xl shadow-md">
           <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Welcome back, {user?.name}!</h2>
@@ -745,6 +779,13 @@ const UserDashboard = () => {
                   >
                     {isLocationEnabled ? 'Location Enabled' : 'Enable Location'}
                   </button>
+                  {/* Manual Send Location Button */}
+                  <button
+                    onClick={handleSendLocation}
+                    className="w-full mt-2 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Send My Location
+                  </button>
                 </div>
               </div>
 
@@ -770,6 +811,12 @@ const UserDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Add Chat Section */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4">Chat with Admin</h2>
+          <UserChat />
+        </div>
       </div>
 
       {/* Checkout Warning Popup */}

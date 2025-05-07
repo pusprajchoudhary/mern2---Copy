@@ -60,16 +60,43 @@ const markAttendance = async (req, res) => {
     const user = req.user._id;
     const photo = req.file ? req.file.filename : null;
 
+    // Parse location from FormData fields if not a JSON string
+    let parsedLocation;
+    if (location && typeof location === 'string') {
+      try {
+        parsedLocation = JSON.parse(location);
+      } catch (e) {
+        // If parsing fails, fallback to old structure
+        parsedLocation = null;
+      }
+    } else if (
+      req.body['location[coordinates][latitude]'] &&
+      req.body['location[coordinates][longitude]'] &&
+      req.body['location[address]'] &&
+      req.body['location[lastUpdated]']
+    ) {
+      parsedLocation = {
+        coordinates: {
+          latitude: req.body['location[coordinates][latitude]'],
+          longitude: req.body['location[coordinates][longitude]']
+        },
+        address: req.body['location[address]'],
+        lastUpdated: req.body['location[lastUpdated]']
+      };
+    } else {
+      parsedLocation = location;
+    }
+
     // Validate required fields
-    if (!location || !photo) {
+    if (!parsedLocation || !photo) {
       console.log('Missing required fields:', {
-        location: !location ? 'missing' : 'present',
+        location: !parsedLocation ? 'missing' : 'present',
         photo: !photo ? 'missing' : 'present'
       });
       return res.status(400).json({ 
         message: 'Location and photo are required',
         details: {
-          location: !location ? 'Location is required' : undefined,
+          location: !parsedLocation ? 'Location is required' : undefined,
           photo: !photo ? 'Photo is required' : undefined
         }
       });
@@ -100,8 +127,8 @@ const markAttendance = async (req, res) => {
 
     // Get human-readable address from coordinates
     const address = await getAddressFromCoordinates(
-      location.coordinates.latitude,
-      location.coordinates.longitude
+      parsedLocation.coordinates.latitude,
+      parsedLocation.coordinates.longitude
     );
 
     // Create a new attendance record
@@ -109,11 +136,11 @@ const markAttendance = async (req, res) => {
       user,
       location: {
         coordinates: {
-          latitude: parseFloat(location.coordinates.latitude),
-          longitude: parseFloat(location.coordinates.longitude)
+          latitude: parseFloat(parsedLocation.coordinates.latitude),
+          longitude: parseFloat(parsedLocation.coordinates.longitude)
         },
         address: address,
-        lastUpdated: new Date()
+        lastUpdated: new Date(parsedLocation.lastUpdated)
       },
       photo,
       timestamp: new Date(),
@@ -136,7 +163,8 @@ const markAttendance = async (req, res) => {
         id: newAttendance._id,
         timestamp: newAttendance.timestamp,
         status: newAttendance.status,
-        location: newAttendance.location
+        location: newAttendance.location,
+        photo: newAttendance.photo
       }
     });
   } catch (error) {
@@ -368,13 +396,19 @@ const updateAttendanceLocation = async (req, res) => {
       return res.status(404).json({ message: 'No attendance record found for today.' });
     }
 
+    // Get human-readable address from coordinates
+    const address = await getAddressFromCoordinates(
+      req.body.coordinates.latitude,
+      req.body.coordinates.longitude
+    );
+
     // Update the location
     attendance.location = {
       coordinates: {
         latitude: req.body.coordinates.latitude,
         longitude: req.body.coordinates.longitude
       },
-      address: req.body.address,
+      address: address,
       lastUpdated: new Date()
     };
 
@@ -385,7 +419,7 @@ const updateAttendanceLocation = async (req, res) => {
         latitude: req.body.coordinates.latitude,
         longitude: req.body.coordinates.longitude
       },
-      address: req.body.address,
+      address: address,
       lastUpdated: new Date()
     });
 

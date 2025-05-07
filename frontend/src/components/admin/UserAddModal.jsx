@@ -7,7 +7,8 @@ const UserAddModal = ({ isOpen, onClose, onUserAdded }) => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'user'
+    role: 'user',
+    designation: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +25,7 @@ const UserAddModal = ({ isOpen, onClose, onUserAdded }) => {
   };
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword || !formData.designation) {
       setError('All fields are required');
       return false;
     }
@@ -65,7 +66,8 @@ const UserAddModal = ({ isOpen, onClose, onUserAdded }) => {
           email: '',
           password: '',
           confirmPassword: '',
-          role: 'user'
+          role: 'user',
+          designation: '',
         });
         // Close modal after 1.5 seconds to show success message
         setTimeout(() => {
@@ -162,6 +164,18 @@ const UserAddModal = ({ isOpen, onClose, onUserAdded }) => {
               onChange={handleChange}
               required
               minLength={6}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Designation</label>
+            <input
+              type="text"
+              name="designation"
+              value={formData.designation}
+              onChange={handleChange}
+              placeholder="e.g. State Head, Manager, etc."
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
             />
           </div>

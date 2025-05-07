@@ -17,7 +17,7 @@ router.get('/', protect, admin, async (req, res) => {
 // Create a new user (admin only)
 router.post('/', protect, admin, async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, designation } = req.body;
 
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -30,7 +30,8 @@ router.post('/', protect, admin, async (req, res) => {
       name,
       email,
       password,
-      role
+      role,
+      designation
     });
 
     // Hash password

@@ -11,6 +11,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { sendNotification } from '../../services/notificationService';
 import TrackUser from './TrackUser';
+import AdminChat from '../../components/admin/chat/AdminChat';
 
 const formatDate = (date) => {
   try {
@@ -43,7 +44,7 @@ const AdminDashboard = () => {
   const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [users, setUsers] = useState([]);
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [error, setError] = useState('');
   const { user, logoutUser, loading } = useAuth();
 
@@ -77,7 +78,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const path = location.pathname.split('/').pop();
     if (path && path !== 'admin') {
-      setActiveSection(path);
+      setActiveTab(path);
     }
   }, [location]);
 
@@ -149,14 +150,14 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    if (activeSection === 'attendance') {
+    if (activeTab === 'attendance') {
       fetchAttendanceData(selectedDate);
     }
-  }, [activeSection, selectedDate]);
+  }, [activeTab, selectedDate]);
 
   const handleLogout = () => {
     logoutUser();
-    navigate('/login', { replace: true });
+    navigate('/login');
   };
 
   const handleUserAdded = (newUser) => {
@@ -175,11 +176,6 @@ const AdminDashboard = () => {
     } finally {
       setAttendanceLoading(false);
     }
-  };
-
-  const handleSectionClick = (section) => {
-    setActiveSection(section);
-    navigate(`/admin/${section}`);
   };
 
   const handleExportAttendance = async () => {
@@ -269,6 +265,7 @@ const AdminDashboard = () => {
     { id: 'policies', label: 'Policies', icon: '📢' },
     { id: 'trackuser', label: 'Track User', icon: '🛰️' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
+    { id: 'chat', label: 'Messages', icon: '💬' },
   ];
 
   // Add mobile menu toggle handler
@@ -299,7 +296,7 @@ const AdminDashboard = () => {
   }
 
   const renderContent = () => {
-    switch (activeSection) {
+    switch (activeTab) {
       case 'dashboard':
         return (
           <div className="space-y-6">
@@ -401,7 +398,7 @@ const AdminDashboard = () => {
                 </button>
 
                 <button
-                  onClick={() => handleSectionClick('attendance')}
+                  onClick={() => setActiveTab('attendance')}
                   className="flex items-center justify-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
                 >
                   <svg className="w-6 h-6 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,7 +408,7 @@ const AdminDashboard = () => {
                 </button>
 
                 <button
-                  onClick={() => handleSectionClick('policies')}
+                  onClick={() => setActiveTab('policies')}
                   className="flex items-center justify-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
                 >
                   <svg className="w-6 h-6 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -530,12 +527,13 @@ const AdminDashboard = () => {
                           <div className="flex items-start space-x-4">
                             <div className="w-16 h-16 rounded-lg overflow-hidden">
                               <img 
-                                src={`/uploads/${log.photo}`} 
+                                src={`http://localhost:5000/api/uploads/${log.photo}`} 
                                 alt={`${log.user?.name}'s attendance`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
+                                  console.error('Error loading image:', e);
                                   e.target.onerror = null;
-                                  e.target.src = '/default-avatar.png';
+                                  e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(log.user?.name || 'User') + '&background=random';
                                 }}
                               />
                             </div>
@@ -726,6 +724,8 @@ const AdminDashboard = () => {
             </div>
           </div>
         );
+      case 'chat':
+        return <AdminChat />;
       default:
         return null;
     }
@@ -776,14 +776,14 @@ const AdminDashboard = () => {
             <button
               key={item.id}
               onClick={() => {
-                handleSectionClick(item.id);
+                setActiveTab(item.id);
                 if (window.innerWidth < 768) {
                   setIsMobileMenuOpen(false);
                   setIsSidebarOpen(false);
                 }
               }}
               className={`flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                activeSection === item.id ? 'bg-red-50 dark:bg-gray-700 text-red-600 dark:text-red-400' : ''
+                activeTab === item.id ? 'bg-red-50 dark:bg-gray-700 text-red-600 dark:text-red-400' : ''
               }`}
             >
               <span className="mr-3">{item.icon}</span>
@@ -799,7 +799,7 @@ const AdminDashboard = () => {
         <header className="bg-white dark:bg-gray-800 shadow-sm">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-4 md:px-6 py-4">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 md:mb-0">
-              {sidebarItems.find(item => item.id === activeSection)?.label}
+              {sidebarItems.find(item => item.id === activeTab)?.label}
             </h2>
             <div className="flex flex-col md:flex-row items-start md:items-center space-y-2 md:space-y-0 md:space-x-4">
               <button

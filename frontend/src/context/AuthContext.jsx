@@ -92,9 +92,11 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await register(userData);
-      setUser(response.user);
+      // Immediately log in with the new credentials to refresh context
+      const loginResponse = await login({ email: userData.email, password: userData.password });
+      setUser(loginResponse.user);
       toast.success('Registration successful!');
-      return response;
+      return loginResponse;
     } catch (error) {
       setError(error.response?.data?.message || 'Registration failed');
       toast.error(error.response?.data?.message || 'Registration failed');

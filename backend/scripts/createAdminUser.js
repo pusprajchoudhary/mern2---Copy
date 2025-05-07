@@ -24,6 +24,12 @@ const createAdminUser = async () => {
       adminExists.role = 'admin';
       await adminExists.save();
       console.log('Admin user updated successfully!');
+      console.log('Admin user details:', {
+        _id: adminExists._id,
+        email: adminExists.email,
+        role: adminExists.role,
+        name: adminExists.name
+      });
     } else {
       // Create admin user
       console.log('Creating new admin user...');
@@ -35,15 +41,13 @@ const createAdminUser = async () => {
         role: 'admin'
       });
       console.log('Admin user created successfully!');
+      console.log('Admin user details:', {
+        _id: admin._id,
+        email: admin.email,
+        role: admin.role,
+        name: admin.name
+      });
     }
-
-    // Verify the admin user
-    const adminUser = await User.findOne({ email: adminEmail });
-    console.log('Admin user details:', {
-      email: adminUser.email,
-      role: adminUser.role,
-      name: adminUser.name
-    });
 
     process.exit(0);
   } catch (error) {

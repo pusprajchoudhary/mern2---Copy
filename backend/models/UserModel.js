@@ -23,6 +23,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  designation: {
+    type: String,
+    default: 'Employee',
+  },
 }, {
   timestamps: true,
 });

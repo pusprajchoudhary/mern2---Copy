@@ -56,7 +56,8 @@ const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        isBlocked: user.isBlocked
+        isBlocked: user.isBlocked,
+        designation: user.designation,
       },
       token,
     });
@@ -75,7 +76,8 @@ const getMe = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      designation: user.designation,
     });
   } catch (error) {
     console.error('Get me error:', error);

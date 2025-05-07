@@ -27,6 +27,7 @@ const loginUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      designation: user.designation,
       token,
     });
   } catch (error) {
@@ -37,7 +38,7 @@ const loginUser = async (req, res) => {
 // @desc    Register user
 // @route   POST /api/users/register
 const registerUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, designation } = req.body;
 
   try {
     const userExists = await User.findOne({ email });
@@ -48,22 +49,29 @@ const registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create user with explicit designation
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
+      designation: designation || 'Employee',
     });
 
     const token = jwt.sign({ id: user._id }, 'yourSecretKey', { expiresIn: '30d' });
 
+    // Return user data including designation
     res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        designation: user.designation,
+      },
       token,
     });
   } catch (error) {
+    console.error('Error creating user:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

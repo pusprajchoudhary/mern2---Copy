@@ -3,7 +3,6 @@ import LoginPage from "./pages/auth/LoginPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 // import RegisterPage from "./pages/auth/RegisterPage";
-import MarkAttendance from "./pages/user/MarkAttendance";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import UserDashboard from "./pages/user/UserDashboard";
 import BlockedUser from './pages/BlockedUser';
@@ -49,15 +48,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['user']}>
             <UserDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mark-attendance"
-        element={
-          <ProtectedRoute allowedRoles={['user']}>
-            <MarkAttendance />
           </ProtectedRoute>
         }
       />
