@@ -10,7 +10,11 @@ node_modules/
 /build
 /dist
 
+<<<<<<< HEAD
 # Environment variables
+=======
+# Environment files
+>>>>>>> a6f867bf66255c6c3dcd1f3240f8a98274313c9c
 .env
 .env.local
 .env.development.local
@@ -40,6 +44,16 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 
+<<<<<<< HEAD
 # Uploads directory
 backend/uploads/*
 !backend/uploads/.gitkeep 
+=======
+# Uploaded files
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Temporary files
+*.log
+*.tmp 
+>>>>>>> a6f867bf66255c6c3dcd1f3240f8a98274313c9c
